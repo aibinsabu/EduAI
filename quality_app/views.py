@@ -2,10 +2,12 @@ from django.shortcuts import render,redirect
 from django.contrib.auth.hashers import make_password
 from django.contrib import messages
 from .models import *
+from django.contrib.auth import authenticate, login as auth_login
+from django.http import HttpResponse
 
 # Create your views here.
 def home(request):
-    return render(request,"home.html")
+    return render(request,"index.html")
 
 def index(request):
     return render(request,"index.html")
@@ -22,7 +24,37 @@ def register(request):
         # result.save()
     return render(request, 'register.html')
 
+def login(request):
+    if request.method == "POST":
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        
+        print(f"Login attempt: {email}")  # Debug
+        
+        try:
+            user = User.objects.get(email=email)
+            print(f"User found: {user.email}")  # Debug
+            
+            if user.check_password(password):
+                auth_login(request, user)
+                messages.success(request, "Login successful.")
+                return redirect('index')
+            else:
+                messages.error(request, "Invalid password.", extra_tags='danger')
+        except User.DoesNotExist:
+            messages.error(request, "User not found.", extra_tags='danger')
+        except Exception as e:
+            print(f"Login error: {e}")  # Debug
+            messages.error(request, f"Error: {str(e)}", extra_tags='danger')
 
+    return render(request, 'login.html')
+
+
+def logout(request):
+    from django.contrib.auth import logout as auth_logout
+    auth_logout(request)
+    messages.success(request, "Logged out successfully.")
+    return redirect('login')
 
 def about(request):
     return render(request, 'about.html')
