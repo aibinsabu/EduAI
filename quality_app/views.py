@@ -1,5 +1,5 @@
 from django.shortcuts import render,redirect
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
 from django.contrib import messages
 from .models import *
 from django.contrib.auth import authenticate, login as auth_login
@@ -24,28 +24,66 @@ def register(request):
         # result.save()
     return render(request, 'register.html')
 
+def hod_dashboard(request):
+    return render(request, 'hod_dashboard.html')
+
 def login(request):
     if request.method == "POST":
         email = request.POST.get('email')
         password = request.POST.get('password')
         
-        print(f"Login attempt: {email}")  # Debug
-        
+        # 1. Check Student (User model) - Standard Django Auth
         try:
             user = User.objects.get(email=email)
-            print(f"User found: {user.email}")  # Debug
-            
             if user.check_password(password):
                 auth_login(request, user)
-                messages.success(request, "Login successful.")
+                request.session['role'] = 'student'
+                messages.success(request, "Login successful as Student.")
                 return redirect('index')
-            else:
-                messages.error(request, "Invalid password.", extra_tags='danger')
         except User.DoesNotExist:
-            messages.error(request, "User not found.", extra_tags='danger')
-        except Exception as e:
-            print(f"Login error: {e}")  # Debug
-            messages.error(request, f"Error: {str(e)}", extra_tags='danger')
+            pass # Continue to check other roles
+
+        # 2. Check Teacher
+        try:
+            teacher = Teacher.objects.get(email=email)
+            if check_password(password, teacher.password):
+                request.session['user_id'] = teacher.id
+                request.session['role'] = 'teacher'
+                request.session['user_email'] = teacher.email
+                request.session['user_name'] = f"{teacher.first_name} {teacher.last_name}"
+                messages.success(request, "Login successful as Teacher.")
+                return redirect('index')
+        except Teacher.DoesNotExist:
+            pass
+
+        # 3. Check HOD
+        try:
+            hod = HOD.objects.get(email=email)
+            if check_password(password, hod.password):
+                request.session['user_id'] = hod.id
+                request.session['role'] = 'hod'
+                request.session['user_email'] = hod.email
+                request.session['user_name'] = f"{hod.first_name} {hod.last_name}"
+                messages.success(request, "Login successful as HOD.")
+                return redirect('hod_dashboard')
+        except HOD.DoesNotExist:
+            pass
+
+        # 4. Check Principal
+        try:
+            principal = Principal.objects.get(email=email)
+            if check_password(password, principal.password):
+                request.session['user_id'] = principal.id
+                request.session['role'] = 'principal'
+                request.session['user_email'] = principal.email
+                request.session['user_name'] = f"{principal.first_name} {principal.last_name}"
+                messages.success(request, "Login successful as Principal.")
+                return redirect('index')
+        except Principal.DoesNotExist:
+            pass
+
+        # If no match found
+        messages.error(request, "Invalid email or password.", extra_tags='danger')
 
     return render(request, 'login.html')
 
@@ -172,7 +210,7 @@ def hod_registration(request):
             password=make_password(password)
         )
         messages.success(request, "Registration successful.")
-        return redirect('index')
+        return redirect('hod_dashboard')
 
     return render(request, 'hod-registration.html')
 

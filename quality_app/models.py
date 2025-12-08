@@ -115,3 +115,56 @@ class HOD(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+
+# --- HOD Interface Models ---
+
+class Course(models.Model):
+    name = models.CharField(max_length=200)
+    department = models.CharField(max_length=100)
+    created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class Exam(models.Model):
+    title = models.CharField(max_length=200)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    date = models.DateTimeField()
+    duration = models.IntegerField(help_text="Duration in minutes")
+    status = models.CharField(max_length=20, choices=[('Scheduled', 'Scheduled'), ('Completed', 'Completed')], default='Scheduled')
+    created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+class Result(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE) # Assuming User can be a student
+    score = models.FloatField()
+    is_pass = models.BooleanField()
+    ai_feedback = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class StudyMaterial(models.Model):
+    title = models.CharField(max_length=200)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    file = models.FileField(upload_to="study_materials/")
+    status = models.CharField(max_length=20, choices=[('Pending', 'Pending'), ('Approved', 'Approved'), ('Rejected', 'Rejected')], default='Pending')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+class ProctoringLog(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    flag_type = models.CharField(max_length=50) # e.g., 'Gaze', 'Screen', 'Audio'
+    timestamp = models.DateTimeField(auto_now_add=True)
+    severity = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High')])
+
+class AIClarificationLog(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    query_text = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
