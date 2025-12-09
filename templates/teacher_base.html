@@ -1,0 +1,59 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-xxl py-5">
+    <div class="container">
+        <div class="row g-4">
+            <!-- Sidebar / Navigation -->
+            <div class="col-lg-3 col-md-4 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded pt-3 h-100">
+                    <div class="p-4">
+                        <div class="text-center mb-4">
+                            <i class="fa fa-3x fa-chalkboard-teacher text-primary mb-3"></i>
+                            <h5 class="mb-0">{{ request.session.user_name }}</h5>
+                            <small>Teacher</small>
+                        </div>
+                        <div class="list-group">
+                            <a href="{% url 'teacher_dashboard' %}"
+                                class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'teacher_dashboard' %}active{% endif %}">
+                                <i class="fa fa-tachometer-alt me-2"></i> Dashboard
+                            </a>
+                            <a href="{% url 'teacher_courses' %}"
+                                class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'teacher_courses' %}active{% endif %}">
+                                <i class="fa fa-book me-2"></i> Courses & Materials
+                            </a>
+                            <a href="{% url 'teacher_exams' %}"
+                                class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'teacher_exams' %}active{% endif %}">
+                                <i class="fa fa-edit me-2"></i> Exams
+                            </a>
+                            <a href="{% url 'teacher_results' %}"
+                                class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'teacher_results' %}active{% endif %}">
+                                <i class="fa fa-chart-bar me-2"></i> Results
+                            </a>
+                            <a href="{% url 'logout' %}" class="list-group-item list-group-item-action text-danger">
+                                <i class="fa fa-sign-out-alt me-2"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="col-lg-9 col-md-8 wow fadeInUp" data-wow-delay="0.3s">
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% block teacher_content %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

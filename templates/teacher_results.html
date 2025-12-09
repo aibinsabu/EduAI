@@ -1,0 +1,48 @@
+{% extends 'teacher_base.html' %}
+
+{% block teacher_content %}
+<div class="service-item rounded pt-3">
+    <div class="p-4">
+        <h3 class="mb-4">Evaluation & Results Center</h3>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Exam</th>
+                        <th>Student</th>
+                        <th>Status</th>
+                        <th>AI Score</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.exam.title }}</td>
+                        <td>{{ result.student.first_name }} {{ result.student.last_name }}</td>
+                        <td>
+                            {% if result.status == 'Pending' %}
+                            <span class="badge bg-warning text-dark">Pending Grading</span>
+                            {% else %}
+                            <span class="badge bg-success">Released</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ result.score }}</td>
+                        <td>
+                            <a href="{% url 'result_detail' result.id %}" class="btn btn-sm btn-primary">
+                                <i class="fa fa-eye me-1"></i> Review & Finalize
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No pending results to review.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

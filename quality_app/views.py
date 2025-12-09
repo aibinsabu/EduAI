@@ -52,7 +52,7 @@ def login(request):
                 request.session['user_email'] = teacher.email
                 request.session['user_name'] = f"{teacher.first_name} {teacher.last_name}"
                 messages.success(request, "Login successful as Teacher.")
-                return redirect('index')
+                return redirect('teacher_dashboard')
         except Teacher.DoesNotExist:
             pass
 
@@ -78,7 +78,7 @@ def login(request):
                 request.session['user_email'] = principal.email
                 request.session['user_name'] = f"{principal.first_name} {principal.last_name}"
                 messages.success(request, "Login successful as Principal.")
-                return redirect('index')
+                return redirect('principal_dashboard')
         except Principal.DoesNotExist:
             pass
 
@@ -159,7 +159,7 @@ def principle_registration(request):
             password=make_password(password)
         )
         messages.success(request, "Registration successful.")
-        return redirect('index')
+        return redirect('principal_dashboard')
 
     return render(request, 'principle-registration.html')
 
@@ -316,4 +316,276 @@ def student_registration(request):
         messages.success(request, "Registration successful.")
         return redirect('index')
 
-    return render(request, 'student-registration.html')
+
+# --- Teacher Dashboard Views ---
+
+def teacher_dashboard(request):
+    # Ensure user is a teacher
+    if not request.session.get('role') == 'teacher':
+        messages.error(request, "Access denied. Teacher only.")
+        return redirect('login')
+
+    teacher_id = request.session.get('user_id')
+    teacher = Teacher.objects.get(id=teacher_id)
+    
+    # Context Data
+    courses = Course.objects.filter(created_by=teacher)
+    exams_count = Exam.objects.filter(course__in=courses).count()
+    pending_results = Result.objects.filter(exam__course__in=courses, status='Pending').count()
+    
+    context = {
+        'teacher': teacher,
+        'courses_count': courses.count(),
+        'exams_count': exams_count,
+        'pending_results': pending_results,
+    }
+    return render(request, 'teacher_dashboard.html', context)
+
+def teacher_courses(request):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+    
+    teacher_id = request.session.get('user_id')
+    teacher = Teacher.objects.get(id=teacher_id)
+    courses = Course.objects.filter(created_by=teacher)
+    
+    return render(request, 'teacher_courses.html', {'courses': courses, 'teacher': teacher})
+
+def upload_material(request):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        course_id = request.POST.get('course_id')
+        file = request.FILES.get('file')
+        
+        teacher_id = request.session.get('user_id')
+        teacher = Teacher.objects.get(id=teacher_id)
+        course = Course.objects.get(id=course_id)
+        
+        StudyMaterial.objects.create(
+            title=title,
+            course=course,
+            teacher=teacher,
+            file=file,
+            status='Approved' # Auto-approve for now or set to Pending based on logic
+        )
+        messages.success(request, "Material uploaded successfully.")
+        return redirect('teacher_courses')
+        
+    return redirect('teacher_courses') # Should be accessed via POST from modal
+
+def teacher_exams(request):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    teacher_id = request.session.get('user_id')
+    teacher = Teacher.objects.get(id=teacher_id)
+    
+    # Filter exams created by this teacher or for their courses
+    courses = Course.objects.filter(created_by=teacher)
+    exams = Exam.objects.filter(course__in=courses).order_by('-created_at')
+    
+    return render(request, 'teacher_exams.html', {'exams': exams, 'courses': courses})
+
+import json
+
+def create_exam(request):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        course_id = request.POST.get('course_id')
+        date = request.POST.get('date')
+        duration = request.POST.get('duration')
+        exam_type = request.POST.get('exam_type')
+        difficulty = request.POST.get('difficulty')
+        
+        # Proctoring Settings
+        camera = request.POST.get('camera') == 'on'
+        screen = request.POST.get('screen') == 'on'
+        audio = request.POST.get('audio') == 'on'
+        proctoring_config = {
+            'camera': camera,
+            'screen': screen,
+            'audio': audio
+        }
+        
+        teacher_id = request.session.get('user_id')
+        teacher = Teacher.objects.get(id=teacher_id)
+        course = Course.objects.get(id=course_id)
+        
+        # Simulate AI Generation Trigger here
+        # In a real app, we would call an AI service to generate questions based on course material
+        
+        Exam.objects.create(
+            title=title,
+            course=course,
+            date=date,
+            duration=duration,
+            exam_type=exam_type,
+            difficulty=difficulty,
+            proctoring_config=proctoring_config,
+            created_by=teacher,
+            status='Scheduled'
+        )
+        
+        messages.success(request, "Exam created and scheduled successfully.")
+        return redirect('teacher_exams')
+        
+    return redirect('teacher_exams')
+
+def teacher_results(request):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    teacher_id = request.session.get('user_id')
+    teacher = Teacher.objects.get(id=teacher_id)
+    courses = Course.objects.filter(created_by=teacher)
+    
+    # Get all pending results for these courses
+    # Assuming Result is linked to Exam which is linked to Course
+    pending_results = Result.objects.filter(exam__course__in=courses, status='Pending')
+    
+    return render(request, 'teacher_results.html', {'results': pending_results})
+
+def result_detail(request, result_id):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    result = Result.objects.get(id=result_id)
+    return render(request, 'teacher_result_detail.html', {'result': result})
+
+def finalize_result(request, result_id):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    if request.method == 'POST':
+        score = request.POST.get('score')
+        feedback = request.POST.get('feedback')
+        
+        result = Result.objects.get(id=result_id)
+        result.score = score
+        result.ai_feedback = feedback # Override or append
+        result.status = 'Released' # Or 'Graded'
+        result.save()
+        
+        messages.success(request, "Result finalized and released.")
+        return redirect('teacher_results')
+    
+    return redirect('teacher_results')
+
+# --- Principal Dashboard Views ---
+
+from django.db.models import Count, Avg, Q
+from django.utils import timezone
+
+def principal_dashboard(request):
+    # Ensure user is a principal
+    if not request.session.get('role') == 'principal':
+        messages.error(request, "Access denied. Principal only.")
+        return redirect('login')
+
+    principal_id = request.session.get('user_id')
+    principal = Principal.objects.get(id=principal_id)
+
+    # 1. Institutional Overview
+    total_students = User.objects.count()
+    active_teachers = Teacher.objects.filter(status=True).count()
+    total_exams = Exam.objects.count()
+
+    # 2. Departmental Performance
+    # Aggregate data by department
+    departments = Teacher.objects.values_list('department', flat=True).distinct()
+    dept_performance = []
+    
+    for dept in departments:
+        if dept:
+            # Get teachers in this dept
+            teachers = Teacher.objects.filter(department=dept)
+            courses = Course.objects.filter(created_by__in=teachers)
+            exams = Exam.objects.filter(course__in=courses)
+            results = Result.objects.filter(exam__in=exams)
+            
+            avg_score = results.aggregate(Avg('score'))['score__avg'] or 0
+            
+            # Calculate pass percentage
+            total_results = results.count()
+            passed_results = results.filter(is_pass=True).count()
+            pass_percentage = (passed_results / total_results * 100) if total_results > 0 else 0
+            
+            dept_performance.append({
+                'name': dept,
+                'avg_score': round(avg_score, 2),
+                'pass_percentage': round(pass_percentage, 2),
+                'course_completion': 85 # Placeholder methodology
+            })
+
+    # 3. AI Efficacy Index
+    ai_exams = Exam.objects.filter(creation_method='AI').count()
+    manual_exams = Exam.objects.filter(creation_method='Manual').count()
+    total_created_exams = ai_exams + manual_exams
+    ai_adoption_ratio = (ai_exams / total_created_exams * 100) if total_created_exams > 0 else 0
+    
+    # Overridden grades: where AI feedback exists but score might be adjusted (heuristic)
+    # For now, we count specific flag or assumption. Let's assume passed with very high score but low AI confidence if we had that.
+    # We will use a placeholder query for "Overridden" based on logic: status='Released' and ai_feedback is not empty
+    overridden_grades = Result.objects.filter(status='Released').exclude(ai_feedback='').count() 
+
+    # 4. System Integrity & Security
+    proctoring_anomalies = ProctoringLog.objects.values('flag_type').annotate(count=Count('id'))
+    
+    # Recent Auth Logs (User creations)
+    recent_users = User.objects.order_by('-created_at')[:5]
+    
+    # Faculty Approval Queue
+    pending_teachers = Teacher.objects.filter(status=False)
+
+    context = {
+        'principal': principal,
+        'total_students': total_students,
+        'active_teachers': active_teachers,
+        'total_exams': total_exams,
+        'dept_performance': dept_performance, # For charts
+        'ai_stats': {
+            'adoption_ratio': round(ai_adoption_ratio, 1),
+            'ai_exams': ai_exams,
+            'manual_exams': manual_exams,
+            'overridden_grades': overridden_grades
+        },
+        'proctoring_anomalies': list(proctoring_anomalies),
+        'recent_users': recent_users,
+        'pending_teachers': pending_teachers,
+    }
+
+    return render(request, 'principal_dashboard.html', context)
+
+def approve_teacher(request, teacher_id):
+    if not request.session.get('role') == 'principal':
+        return redirect('login')
+        
+    try:
+        teacher = Teacher.objects.get(id=teacher_id)
+        teacher.status = True
+        teacher.save()
+        messages.success(request, f"Teacher {teacher.first_name} approved successfully.")
+    except Teacher.DoesNotExist:
+        messages.error(request, "Teacher not found.")
+        
+    return redirect('principal_dashboard')
+
+def reject_teacher(request, teacher_id):
+    if not request.session.get('role') == 'principal':
+        return redirect('login')
+        
+    try:
+        teacher = Teacher.objects.get(id=teacher_id)
+        teacher.delete() # Or set status to Rejected if field existed
+        messages.success(request, f"Teacher {teacher.first_name} rejected.")
+    except Teacher.DoesNotExist:
+        messages.error(request, "Teacher not found.")
+        
+    return redirect('principal_dashboard')
+

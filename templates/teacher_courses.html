@@ -1,0 +1,90 @@
+{% extends 'teacher_base.html' %}
+
+{% block teacher_content %}
+<div class="service-item rounded pt-3">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">My Courses & Materials</h3>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fa fa-upload me-2"></i> Upload New Material
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Department</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                    <tr>
+                        <td>
+                            <strong>{{ course.name }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                Materials:
+                                {% for material in course.studymaterial_set.all %}
+                                <span class="badge bg-secondary">{{ material.title }}</span>
+                                {% empty %}
+                                <span class="text-muted font-italic">No materials uploaded</span>
+                                {% endfor %}
+                            </small>
+                        </td>
+                        <td>{{ course.department }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="text-center">No courses assigned to you yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Study Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'upload_material' %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseSelect" class="form-label">Select Course</label>
+                        <select class="form-select" id="courseSelect" name="course_id" required>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}">{{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="materialTitle" class="form-label">Material Title</label>
+                        <input type="text" class="form-control" id="materialTitle" name="title" required
+                            placeholder="e.g., Unit 1 Notes">
+                    </div>
+                    <div class="mb-3">
+                        <label for="materialFile" class="form-label">File</label>
+                        <input type="file" class="form-control" id="materialFile" name="file" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <small><i class="fa fa-info-circle"></i> This material will be used by the AI to generate
+                            questions.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

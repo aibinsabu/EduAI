@@ -8,24 +8,360 @@
             <h6 class="section-title bg-white text-center text-primary px-3">Dashboard</h6>
             <h1 class="mb-5">HOD Interface</h1>
         </div>
+
+        <div class="row mb-4">
+            <div class="col-12 d-flex justify-content-between align-items-center">
+                <h4>Welcome, {{ request.session.user_name }}</h4>
+                <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+
         <div class="row g-4">
-            <div class="col-lg-12 col-md-12 wow fadeInUp" data-wow-delay="0.1s">
-                <div class="service-item rounded pt-3">
-                    <div class="p-4">
-                        <i class="fa fa-3x fa-user-tie text-primary mb-4"></i>
-                        <h5>Welcome, {{ request.session.user_name }}</h5>
-                        <p>You are logged in as Head of Department.</p>
-                        <hr>
-                        <h6>Available Modules (Backend Ready)</h6>
-                        <ul>
-                            <li><a href="{% url 'api_oversight' %}" target="_blank">Oversight Analytics API</a></li>
-                            <li><a href="{% url 'api_faculty_mgmt' %}" target="_blank">Faculty Management API</a></li>
-                            <li><a href="{% url 'api_exam_integrity' %}" target="_blank">Exam Integrity API</a></li>
-                        </ul>
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="hodTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="oversight-tab" data-bs-toggle="tab"
+                            data-bs-target="#oversight" type="button" role="tab">Oversight Dashboard</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="faculty-tab" data-bs-toggle="tab" data-bs-target="#faculty"
+                            type="button" role="tab">Faculty Management</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="integrity-tab" data-bs-toggle="tab" data-bs-target="#integrity"
+                            type="button" role="tab">Exam Integrity</button>
+                    </li>
+                </ul>
+                <div class="tab-content pt-4" id="hodTabsContent">
+
+                    <!-- Tab 1: Oversight Dashboard -->
+                    <div class="tab-pane fade show active" id="oversight" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Pass/Fail Rates</h5>
+                                        <canvas id="passFailChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Subject Performance (Avg Score)</h5>
+                                        <canvas id="subjectChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="card shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Top Subjects Needing AI Clarification</h5>
+                                        <ul class="list-group list-group-flush" id="aiUsageList">
+                                            <!-- AI Usage items will be populated here -->
+                                            <li class="list-group-item text-muted">Loading data...</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Tab 2: Faculty Management -->
+                    <div class="tab-pane fade" id="faculty" role="tabpanel">
+                        <div class="row">
+                            <div class="col-12 mb-5">
+                                <h5>Teacher Role Management</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Department</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="teachersTableBody">
+                                            <!-- Teachers will be inserted here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <h5>Pending Study Material Reviews</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Title</th>
+                                                <th>Course</th>
+                                                <th>Teacher</th>
+                                                <th>Date</th>
+                                                <th>Link</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="materialsTableBody">
+                                            <!-- Materials will be inserted here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Exam Integrity -->
+                    <div class="tab-pane fade" id="integrity" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Flag Distribution</h5>
+                                        <canvas id="integrityChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-danger">Recent Severe Incidents</h5>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Student</th>
+                                                        <th>Exam</th>
+                                                        <th>Issue</th>
+                                                        <th>Time</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="integrityTableBody">
+                                                    <!-- Integrity logs will be inserted here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Load default tab data
+        loadOversightData();
+
+        // Event listeners for tabs to load data when clicked
+        document.getElementById('faculty-tab').addEventListener('click', loadFacultyData);
+        document.getElementById('integrity-tab').addEventListener('click', loadIntegrityData);
+        document.getElementById('oversight-tab').addEventListener('click', loadOversightData);
+    });
+
+    // --- Oversignt Tab ---
+    function loadOversightData() {
+        fetch('/quality/api/hod/oversight/') // Note: Adjust URL path if needed. Assuming /api/ is under quality_app urls which is usually stripped or preserved. Let's check urls.py. API path is 'api/hod/...'
+        // Actually, looks like urls.py has path('api/hod/oversight/', api.get_oversight_analytics) inside quality_app.
+        // And main urls.py includes quality_app.urls at root path ''.
+        // So URL is /api/hod/oversight/
+        fetch('/api/hod/oversight/')
+            .then(response => response.json())
+            .then(data => {
+                renderPassFailChart(data.pass_fail_rate);
+                renderSubjectChart(data.subject_performance);
+                renderAIUsage(data.ai_clarification_top_subjects);
+            })
+            .catch(error => console.error('Error loading oversight data:', error));
+    }
+
+    let pfChart = null;
+    function renderPassFailChart(rates) {
+        const ctx = document.getElementById('passFailChart').getContext('2d');
+        if (pfChart) pfChart.destroy();
+        pfChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Pass', 'Fail'],
+                datasets: [{
+                    data: [rates.pass, rates.fail],
+                    backgroundColor: ['#198754', '#dc3545']
+                }]
+            }
+        });
+    }
+
+    let subChart = null;
+    function renderSubjectChart(subjects) {
+        const ctx = document.getElementById('subjectChart').getContext('2d');
+        const labels = subjects.map(s => s.name);
+        const data = subjects.map(s => s.avg_score);
+
+        if (subChart) subChart.destroy();
+        subChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Avg Score',
+                    data: data,
+                    backgroundColor: '#0d6efd'
+                }]
+            },
+            options: { scales: { y: { beginAtZero: true, max: 100 } } }
+        });
+    }
+
+    function renderAIUsage(list) {
+        const ul = document.getElementById('aiUsageList');
+        ul.innerHTML = '';
+        if (list.length === 0) {
+            ul.innerHTML = '<li class="list-group-item">No data available</li>';
+            return;
+        }
+        list.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `${item.course__name} <span class="badge bg-primary rounded-pill">${item.query_count} queries</span>`;
+            ul.appendChild(li);
+        });
+    }
+
+
+    // --- Faculty Management Tab ---
+    function loadFacultyData() {
+        fetch('/api/hod/faculty-management/')
+            .then(response => response.json())
+            .then(data => {
+                renderTeachersTable(data.teachers);
+                renderMaterialsTable(data.pending_materials);
+            })
+            .catch(error => console.error('Error loading faculty data:', error));
+    }
+
+    function renderTeachersTable(teachers) {
+        const tbody = document.getElementById('teachersTableBody');
+        tbody.innerHTML = '';
+        teachers.forEach(t => {
+            const tr = document.createElement('tr');
+            const statusBadge = t.status ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
+            const actionBtn = t.status
+                ? `<button class="btn btn-sm btn-outline-danger" onclick="updateTeacherRole(${t.id}, 'deactivate')">Deactivate</button>`
+                : `<button class="btn btn-sm btn-outline-success" onclick="updateTeacherRole(${t.id}, 'approve')">Approve</button>`;
+
+            tr.innerHTML = `
+                <td>${t.first_name} ${t.last_name}</td>
+                <td>${t.department}</td>
+                <td>${statusBadge}</td>
+                <td>${actionBtn}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderMaterialsTable(materials) {
+        const tbody = document.getElementById('materialsTableBody');
+        tbody.innerHTML = '';
+        if (materials.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No pending materials</td></tr>';
+            return;
+        }
+        materials.forEach(m => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${m.title}</td>
+                <td>${m.course__name}</td>
+                <td>${m.teacher__first_name} ${m.teacher__last_name}</td>
+                <td>${new Date(m.uploaded_at).toLocaleDateString()}</td>
+                <td><a href="#" class="text-primary">View File</a></td> <!-- Placeholder link -->
+                <td>
+                    <button class="btn btn-sm btn-success me-1" onclick="reviewMaterial(${m.id}, 'approve')"><i class="fa fa-check"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="reviewMaterial(${m.id}, 'reject')"><i class="fa fa-times"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.updateTeacherRole = function (id, action) {
+        fetch('/api/hod/faculty-management/role/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teacher_id: id, action: action })
+        }).then(res => {
+            if (res.ok) loadFacultyData(); // Reload table
+            else alert('Failed to update role');
+        });
+    }
+
+    window.reviewMaterial = function (id, action) {
+        fetch('/api/hod/faculty-management/material/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ material_id: id, action: action })
+        }).then(res => {
+            if (res.ok) loadFacultyData(); // Reload table
+            else alert('Failed to review material');
+        });
+    }
+
+
+    // --- Exam Integrity Tab ---
+    function loadIntegrityData() {
+        fetch('/api/hod/exam-integrity/')
+            .then(response => response.json())
+            .then(data => {
+                renderIntegrityChart(data.flag_distribution);
+                renderIntegrityLogs(data.recent_severe_incidents);
+            })
+            .catch(error => console.error('Error loading integrity data:', error));
+    }
+
+    let intChart = null;
+    function renderIntegrityChart(dist) {
+        const ctx = document.getElementById('integrityChart').getContext('2d');
+        if (intChart) intChart.destroy();
+
+        const labels = dist.map(d => d.flag_type);
+        const counts = dist.map(d => d.count);
+
+        intChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#ffc107', '#dc3545', '#fd7e14', '#6c757d']
+                }]
+            }
+        });
+    }
+
+    function renderIntegrityLogs(logs) {
+        const tbody = document.getElementById('integrityTableBody');
+        tbody.innerHTML = '';
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">No severe incidents reported</td></tr>';
+            return;
+        }
+        logs.forEach(l => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${l.student__first_name} ${l.student__last_name}</td>
+                <td>${l.exam__title}</td>
+                <td class="text-danger fw-bold">${l.flag_type}</td>
+                <td>${new Date(l.timestamp).toLocaleString()}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+</script>
 {% endblock %}

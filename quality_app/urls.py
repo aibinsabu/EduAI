@@ -28,6 +28,21 @@ urlpatterns = [
     path('api/hod/faculty-management/role/', api.manage_faculty_role, name='api_manage_role'),
     path('api/hod/faculty-management/material/', api.review_study_material, name='api_review_material'),
     path('api/hod/exam-integrity/', api.get_exam_integrity_report, name='api_exam_integrity'),
+
+    # --- Teacher Interface ---
+    path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
+    path('teacher/courses/', views.teacher_courses, name='teacher_courses'),
+    path('teacher/material/upload/', views.upload_material, name='upload_material'),
+    path('teacher/exams/', views.teacher_exams, name='teacher_exams'),
+    path('teacher/exam/create/', views.create_exam, name='create_exam'),
+    path('teacher/results/', views.teacher_results, name='teacher_results'),
+    path('teacher/result/<int:result_id>/', views.result_detail, name='result_detail'),
+    path('teacher/result/<int:result_id>/finalize/', views.finalize_result, name='finalize_result'),
+
+    # --- Principal Interface ---
+    path('principal/dashboard/', views.principal_dashboard, name='principal_dashboard'),
+    path('principal/teacher/<int:teacher_id>/approve/', views.approve_teacher, name='approve_teacher'),
+    path('principal/teacher/<int:teacher_id>/reject/', views.reject_teacher, name='reject_teacher'),
 ]
 
 if settings.DEBUG:

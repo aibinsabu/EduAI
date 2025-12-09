@@ -91,6 +91,9 @@
                                 <a href="{% url '404' %}" class="dropdown-item">404 Page</a>
                             </div>
                         </div>
+                        {% if request.session.user_id or user.is_authenticated %}
+                        <a href="{% url 'logout' %}" class="nav-item nav-link">Logout</a>
+                        {% else %}
                         <div class="nav-item dropdown">
                             <a href="#" class="nav-link dropdown-toggle"
                                 data-bs-toggle="dropdown">Registration/Login</a>
@@ -101,6 +104,7 @@
                                 <a href="{% url 'student_registration' %}" class="dropdown-item">Student</a>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                     <button type="button" class="btn text-secondary ms-3" data-bs-toggle="modal"
                         data-bs-target="#searchModal"><i class="fa fa-search"></i></button>

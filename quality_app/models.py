@@ -137,6 +137,28 @@ class Exam(models.Model):
     created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # New fields for Teacher Dashboard
+    EXAM_TYPES = [
+        ('MCQ', 'Multiple Choice Questions'),
+        ('Essay', 'Essay/Subjective'),
+        ('Mixed', 'Mixed Format'),
+    ]
+    DIFFICULTY_LEVELS = [
+        ('Easy', 'Easy'),
+        ('Medium', 'Medium'),
+        ('Hard', 'Hard'),
+    ]
+    
+    exam_type = models.CharField(max_length=10, choices=EXAM_TYPES, default='MCQ')
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_LEVELS, default='Medium')
+    proctoring_config = models.JSONField(default=dict, help_text="JSON configuration for proctoring settings (e.g., {'camera': true, 'screen': true})")
+
+    CREATION_METHODS = [
+        ('Manual', 'Manual'),
+        ('AI', 'AI Generated'),
+    ]
+    creation_method = models.CharField(max_length=10, choices=CREATION_METHODS, default='Manual')
+
     def __str__(self):
         return self.title
 
@@ -146,6 +168,14 @@ class Result(models.Model):
     score = models.FloatField()
     is_pass = models.BooleanField()
     ai_feedback = models.TextField(blank=True)
+    
+    STATUS_CHOICES = [
+        ('Pending', 'Pending Grading'),
+        ('Graded', 'Graded'),
+        ('Released', 'Released'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
 class StudyMaterial(models.Model):

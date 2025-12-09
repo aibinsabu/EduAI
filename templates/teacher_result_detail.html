@@ -1,0 +1,79 @@
+{% extends 'teacher_base.html' %}
+
+{% block teacher_content %}
+<div class="service-item rounded pt-3">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <a href="{% url 'teacher_results' %}" class="text-muted"><i class="fa fa-arrow-left me-1"></i> Back to
+                    Queue</a>
+                <h3 class="mt-2">{{ result.exam.title }} - {{ result.student.first_name }} {{ result.student.last_name
+                    }}</h3>
+            </div>
+            <span class="badge bg-warning text-dark">{{ result.status }}</span>
+        </div>
+
+        <div class="row g-4">
+            <!-- Student Submission Mockup -->
+            <div class="col-lg-8">
+                <div class="card border-0 bg-light">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="mb-0">Student Submission</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Mock content for prototype -->
+                        <div class="mb-4">
+                            <strong>Q1. Explain the theory of relativity.</strong>
+                            <p class="mt-2 text-muted fst-italic">"The theory of relativity usually encompasses two
+                                interrelated theories by Albert Einstein: special relativity and general relativity..."
+                            </p>
+                        </div>
+                        <div class="mb-4">
+                            <strong>Q2. Define Photosynthesis.</strong>
+                            <p class="mt-2 text-muted fst-italic">"Photosynthesis is the process used by plants and
+                                other organisms to convert light energy into chemical energy..."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grading Panel -->
+            <div class="col-lg-4">
+                <div class="card border-primary h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0 text-white">Final Evaluation</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{% url 'finalize_result' result.id %}" method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">AI Suggested Score</label>
+                                <input type="text" class="form-control" value="{{ result.score }}" disabled>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Final Score</label>
+                                <input type="number" step="0.1" class="form-control" name="score"
+                                    value="{{ result.score }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">AI Feedback</label>
+                                <textarea class="form-control" rows="3" disabled>{{ result.ai_feedback }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Teacher Comments (Overrides AI)</label>
+                                <textarea class="form-control" name="feedback"
+                                    rows="4">{{ result.ai_feedback }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">Finalize & Release Result</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

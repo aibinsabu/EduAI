@@ -1,0 +1,46 @@
+{% extends 'teacher_base.html' %}
+
+{% block teacher_content %}
+<div class="service-item rounded pt-3 h-100">
+    <div class="p-4">
+        <h3 class="mb-4">Dashboard Overview</h3>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="bg-light rounded p-4 text-center">
+                    <i class="fa fa-3x fa-graduation-cap text-primary mb-3"></i>
+                    <h2 class="mb-0">{{ courses_count }}</h2>
+                    <p class="text-muted mb-0">Active Courses</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-light rounded p-4 text-center">
+                    <i class="fa fa-3x fa-file-alt text-primary mb-3"></i>
+                    <h2 class="mb-0">{{ exams_count }}</h2>
+                    <p class="text-muted mb-0">Created Exams</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-light rounded p-4 text-center">
+                    <i class="fa fa-3x fa-tasks text-primary mb-3"></i>
+                    <h2 class="mb-0">{{ pending_results }}</h2>
+                    <p class="text-muted mb-0">Pending Reviews</p>
+                    {% if pending_results > 0 %}
+                    <a href="{% url 'teacher_results' %}" class="btn btn-sm btn-primary mt-2">Review Now</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-5">
+
+        <h4 class="mb-3">Quick Actions</h4>
+        <div class="d-flex gap-3">
+            <a href="{% url 'teacher_courses' %}" class="btn btn-outline-primary"><i
+                    class="fa fa-upload me-2"></i>Upload Material</a>
+            <a href="{% url 'teacher_exams' %}" class="btn btn-outline-primary"><i class="fa fa-plus me-2"></i>Create
+                Exam</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
