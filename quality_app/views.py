@@ -38,6 +38,11 @@ def login(request):
             user = User.objects.get(email=email)
             if user.check_password(password):
                 auth_login(request, user)
+                if user.is_superuser:
+                    request.session['role'] = 'admin'
+                    messages.success(request, "Login successful as Admin.")
+                    return redirect('admin_dashboard')
+
                 request.session['role'] = 'student'
                 messages.success(request, "Login successful as Student.")
                 return redirect('student_dashboard')
@@ -675,4 +680,44 @@ def submit_exam(request, exam_id):
         return redirect('student_dashboard')
     return redirect('student_dashboard')
     return redirect('principal_dashboard')
+
+
+# --- Admin Dashboard Views ---
+
+def admin_dashboard(request):
+    # Ensure user is a superuser/admin
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied. Admin only.")
+        return redirect('login')
+
+    # 1. User Overview
+    total_students = User.objects.filter(is_superuser=False).count()
+    total_teachers = Teacher.objects.count()
+    total_hods = HOD.objects.count()
+    total_principals = Principal.objects.count()
+    
+    # 2. Key System Metrics
+    total_courses = Course.objects.count()
+    total_exams = Exam.objects.count()
+    
+    # 3. Recent Registrations (Combined)
+    # This is a bit complex since users are in different tables. 
+    # For now, we'll just show recent User (student) registrations as a proxy or fetch separately.
+    recent_students = User.objects.order_by('-created_at')[:5]
+    
+    # 4. Pending Approvals (Teachers)
+    pending_teachers_count = Teacher.objects.filter(status=False).count()
+
+    context = {
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'total_hods': total_hods,
+        'total_principals': total_principals,
+        'total_courses': total_courses,
+        'total_exams': total_exams,
+        'recent_students': recent_students,
+        'pending_teachers_count': pending_teachers_count,
+    }
+
+    return render(request, 'admin_dashboard.html', context)
 

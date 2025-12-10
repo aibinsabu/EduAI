@@ -49,6 +49,9 @@ urlpatterns = [
     path('principal/dashboard/', views.principal_dashboard, name='principal_dashboard'),
     path('principal/teacher/<int:teacher_id>/approve/', views.approve_teacher, name='approve_teacher'),
     path('principal/teacher/<int:teacher_id>/reject/', views.reject_teacher, name='reject_teacher'),
+    
+    # --- Admin Interface ---
+    path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
 ]
 
 if settings.DEBUG:

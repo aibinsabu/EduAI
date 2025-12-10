@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperAdmin Dashboard - EduQuality AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 text-gray-800 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-white flex-shrink-0 hidden md:flex flex-col">
+            <div class="p-6 border-b border-gray-700">
+                <span class="text-xl font-bold tracking-tight">EduQuality AI</span>
+                <p class="text-xs text-gray-400 mt-1">SuperAdmin Console</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="#" class="flex items-center space-x-3 px-4 py-3 bg-indigo-600 rounded-lg text-white">
+                    <i class="fas fa-tachometer-alt w-5"></i>
+                    <span>Overview</span>
+                </a>
+                <a href="/admin/" target="_blank"
+                    class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                    <i class="fas fa-cogs w-5"></i>
+                    <span>Django Admin</span>
+                </a>
+                <a href="#users"
+                    class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                    <i class="fas fa-users w-5"></i>
+                    <span>User Management</span>
+                </a>
+                <a href="#system"
+                    class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                    <i class="fas fa-server w-5"></i>
+                    <span>System Health</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <div class="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center font-bold">
+                        A
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium">Administrator</p>
+                        <a href="{% url 'logout' %}" class="text-xs text-red-400 hover:text-red-300">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">System Overview</h1>
+                    <p class="text-sm text-gray-500">Global Administration Panel</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button
+                        class="bg-white p-2 rounded-lg shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <a href="/admin/" target="_blank"
+                        class="bg-slate-800 px-4 py-2 rounded-lg text-white font-medium hover:bg-slate-700 shadow-lg shadow-gray-500/30 transition">
+                        <i class="fas fa-database mr-2"></i> Database Admin
+                    </a>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                <div
+                    class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- User Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total Students -->
+                <div class="glass-panel p-6 border-l-4 border-blue-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase">Students</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_students }}</h3>
+                        </div>
+                        <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Registered Users</p>
+                </div>
+
+                <!-- Total Teachers -->
+                <div class="glass-panel p-6 border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase">Teachers</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_teachers }}</h3>
+                        </div>
+                        <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-yellow-600 mt-2">
+                        {% if pending_teachers_count > 0 %}
+                        <i class="fas fa-exclamation-circle"></i> {{ pending_teachers_count }} Pending Approval
+                        {% else %}
+                        All Verified
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- HODs -->
+                <div class="glass-panel p-6 border-l-4 border-purple-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase">HODs</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_hods }}</h3>
+                        </div>
+                        <div class="p-2 bg-purple-50 rounded-lg text-purple-600">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Department Heads</p>
+                </div>
+
+                <!-- Principals -->
+                <div class="glass-panel p-6 border-l-4 border-red-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase">Principals</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_principals }}</h3>
+                        </div>
+                        <div class="p-2 bg-red-50 rounded-lg text-red-600">
+                            <i class="fas fa-university"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Institution Leaders</p>
+                </div>
+            </div>
+
+            <!-- System Metrics -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="glass-panel p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Academic Content Overview</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-100 p-4 rounded-xl text-center">
+                            <h4 class="text-2xl font-bold text-indigo-600">{{ total_courses }}</h4>
+                            <p class="text-sm text-gray-500">Active Courses</p>
+                        </div>
+                        <div class="bg-gray-100 p-4 rounded-xl text-center">
+                            <h4 class="text-2xl font-bold text-pink-600">{{ total_exams }}</h4>
+                            <p class="text-sm text-gray-500">Exams Conducted</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Recent Student Registrations</h3>
+                    <div class="overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2">Email</th>
+                                    <th class="px-3 py-2">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in recent_students %}
+                                <tr class="border-b">
+                                    <td class="px-3 py-2 font-medium">{{ student.email }}</td>
+                                    <td class="px-3 py-2 text-gray-500">{{ student.created_at|date:"M d" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="p-3 text-center text-gray-500">No new users</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</body>
+
+</html>
