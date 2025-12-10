@@ -99,6 +99,16 @@
 
 <div class="dashboard-container">
     <div class="container">
+        <!-- Alerts -->
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+
         <!-- Profile Header -->
         <div class="profile-header">
             <div class="row align-items-center">

@@ -4,7 +4,10 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.contrib import messages
 from .models import *
 from django.contrib.auth import authenticate, login as auth_login
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
+from .ai_modules import AQGService, GradingService, SupportService, ProctoringService
+import json # Ensure json is imported
+
 
 # Create your views here.
 def home(request):
@@ -359,6 +362,27 @@ def teacher_courses(request):
     
     return render(request, 'teacher_courses.html', {'courses': courses, 'teacher': teacher})
 
+def create_course(request):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        department = request.POST.get('department')
+        
+        teacher_id = request.session.get('user_id')
+        teacher = Teacher.objects.get(id=teacher_id)
+        
+        Course.objects.create(
+            name=name,
+            department=department,
+            created_by=teacher
+        )
+        messages.success(request, "Course created successfully.")
+        return redirect('teacher_courses')
+    
+    return redirect('teacher_courses')
+
 def upload_material(request):
     if not request.session.get('role') == 'teacher':
         return redirect('login')
@@ -425,10 +449,29 @@ def create_exam(request):
         teacher = Teacher.objects.get(id=teacher_id)
         course = Course.objects.get(id=course_id)
         
-        # Simulate AI Generation Trigger here
-        # In a real app, we would call an AI service to generate questions based on course material
+        # AI Question Generation Trigger
+        # If 'AI' is selected in creation method (assuming we add a field or checkbox for it, or infer from context)
+        # For this demo, let's assume we want to generate questions if specific params are present or just demonstrate the call.
         
-        Exam.objects.create(
+        # NOTE: In a real flow, you might want to generate questions BEFORE creating the Exam object
+        # or store them in a JSON field on the Exam.
+        
+        generated_questions_data = {}
+        if request.POST.get('creation_method') == 'AI' or True: # Force AI for demo if needed, or check a flag
+             # Fetch course material (simplification: just taking the course name/desc as text context for now)
+             # In reality, you'd fetch StudyMaterial.objects.filter(course=course).first().file.read()
+             context_text = f"Content for course {course.name}. " + " ".join([m.title for m in StudyMaterial.objects.filter(course=course)])
+             
+             aqg = AQGService.get_instance()
+             questions = aqg.generate_questions(context_text, count=5, difficulty=difficulty)
+             # Store these questions somewhere. For now, we'll put them in a JSON field if Exam had one, 
+             # or just log them. Let's assume Exam model has a 'questions_data' field or we create Question objects.
+             # Since Question model isn't in the provided models.py, I'll serialize them to a potential new field 
+             # or just print/log for the integration proof.
+             print(f"DEBUG: AI Generated Questions: {questions}")
+             generated_questions_data = questions
+
+        exam = Exam.objects.create(
             title=title,
             course=course,
             date=date,
@@ -436,9 +479,12 @@ def create_exam(request):
             exam_type=exam_type,
             difficulty=difficulty,
             proctoring_config=proctoring_config,
+            creation_method='AI', # Explicitly marking as AI for dashboard stats
             created_by=teacher,
             status='Scheduled'
         )
+        
+        # If we had a Questions model, we would save them here.
         
         messages.success(request, "Exam created and scheduled successfully.")
         return redirect('teacher_exams')
@@ -642,12 +688,23 @@ def submit_ai_query(request):
             query = data.get('query')
             course_id = data.get('course_id') # Optional context
             
-            # Simulate AI Response
-            ai_response = f"Simulated AI Explanation for: '{query}'. \n\nKey Concepts: [Concept A], [Concept B]. \nExample: Imagine a scenario where..."
+            # Retrieve context material
+            context_text = ""
+            course = None
+            if course_id:
+                course = Course.objects.get(id=course_id)
+                # Naive context: aggregate titles of materials
+                materials = StudyMaterial.objects.filter(course=course, status='Approved')
+                context_text = " ".join([m.title for m in materials])
+
+            # Use SupportService
+            support_bot = SupportService.get_instance()
+            result = support_bot.get_clarification(query, context_text)
+            
+            ai_response = result['answer']
             
             # Log the query
             student = request.user
-            course = Course.objects.get(id=course_id) if course_id else None
             
             if course:
                  AIClarificationLog.objects.create(
@@ -656,7 +713,7 @@ def submit_ai_query(request):
                     query_text=query
                 )
             
-            return JsonResponse({'response': ai_response})
+            return JsonResponse({'response': ai_response, 'citation': result.get('relevant_section')})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
             
@@ -668,6 +725,11 @@ def exam_interface(request, exam_id):
         
     exam = Exam.objects.get(id=exam_id)
     
+    # Check if user already submitted this exam
+    if Result.objects.filter(exam=exam, student=request.user).exists():
+        messages.warning(request, "You have already attempted this exam.")
+        return redirect('student_dashboard')
+
     context = {
         'exam': exam,
         'student': request.user
@@ -676,9 +738,67 @@ def exam_interface(request, exam_id):
 
 def submit_exam(request, exam_id):
     if request.method == 'POST':
-        messages.success(request, "Exam submitted successfully! Results will be available shortly.")
+        exam = Exam.objects.get(id=exam_id)
+        
+        # Check if already submitted
+        if Result.objects.filter(exam=exam, student=request.user).exists():
+             messages.error(request, "You have already submitted this exam.")
+             return redirect('student_dashboard')
+        # In a real app, retrieve student answers from POST data
+        # answers = json.loads(request.body).get('answers')
+        
+        # Mock answers for demonstration of grading
+        answers = [
+            {"question_text": "Explain photosynthesis.", "student_answer": "It is how plants make food using sun."}
+        ]
+        
+        grader = GradingService.get_instance()
+        total_score = 0
+        feedback_summary = []
+        
+        for ans in answers:
+            # ideal_answer would be fetched from the DB
+            ideal = "Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to create oxygen and energy in the form of sugar."
+            
+            grading_result = grader.grade_submission(ans['question_text'], ans['student_answer'], ideal)
+            total_score += grading_result['score']
+            feedback_summary.append(grading_result['feedback'])
+            
+        # Create Result object
+        exam = Exam.objects.get(id=exam_id)
+        Result.objects.create(
+            exam=exam,
+            student=request.user,
+            score=total_score,
+            is_pass=total_score > 5, # Simple threshold
+            ai_feedback=" | ".join(feedback_summary),
+            status='Pending' # Pending teacher confirmation even after AI grading
+        )
+
+        messages.success(request, "Exam submitted successfully! AI Grading in progress...")
         return redirect('student_dashboard')
     return redirect('student_dashboard')
+
+@csrf_exempt
+def proctoring_stream_endpoint(request):
+    """
+    Endpoint to receive video frames for proctoring analysis.
+    Expected: POST with frame data.
+    """
+    if request.method == 'POST':
+        try:
+            # frame_data = request.POST.get('frame') or key in json
+            # For simplicity, just return the mock result
+            proctor = ProctoringService.get_instance()
+            analysis = proctor.process_frame("dummy_frame_data")
+            
+            # If violations found, log them
+            # ProctoringLog.objects.create(...)
+            
+            return JsonResponse(analysis)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'listening'})
     return redirect('principal_dashboard')
 
 

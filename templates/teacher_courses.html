@@ -5,9 +5,14 @@
     <div class="p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="mb-0">My Courses & Materials</h3>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                <i class="fa fa-upload me-2"></i> Upload New Material
-            </button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createCourseModal">
+                    <i class="fa fa-plus me-2"></i> Create New Course
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fa fa-upload me-2"></i> Upload New Material
+                </button>
+            </div>
         </div>
 
         <div class="table-responsive">
@@ -42,6 +47,38 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Course Modal -->
+<div class="modal fade" id="createCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Course</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'create_course' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseName" class="form-label">Course Name</label>
+                        <input type="text" class="form-control" id="courseName" name="name" required
+                            placeholder="e.g., Introduction to Computer Science">
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseDept" class="form-label">Department</label>
+                        <input type="text" class="form-control" id="courseDept" name="department" required
+                            placeholder="e.g., Computer Science">
+                        <small class="text-muted">Enter the department code or name.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success">Create Course</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
