@@ -1,4 +1,5 @@
 from django.shortcuts import render,redirect
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib import messages
 from .models import *
@@ -39,7 +40,7 @@ def login(request):
                 auth_login(request, user)
                 request.session['role'] = 'student'
                 messages.success(request, "Login successful as Student.")
-                return redirect('index')
+                return redirect('student_dashboard')
         except User.DoesNotExist:
             pass # Continue to check other roles
 
@@ -314,7 +315,9 @@ def student_registration(request):
         user.set_password(password)
         user.save()
         messages.success(request, "Registration successful.")
-        return redirect('index')
+        return redirect('student_dashboard')
+
+    return render(request, 'student-registration.html')
 
 
 # --- Teacher Dashboard Views ---
@@ -587,5 +590,89 @@ def reject_teacher(request, teacher_id):
     except Teacher.DoesNotExist:
         messages.error(request, "Teacher not found.")
         
+# --- Student Dashboard Views ---
+
+def student_dashboard(request):
+    if not request.session.get('role') == 'student':
+        messages.error(request, "Access denied. Student only.")
+        return redirect('login')
+
+    student = request.user 
+    
+    # Get enrolled courses (Assuming logic: All courses in student's department)
+    student_dept = student.department
+    courses = Course.objects.filter(department=student_dept)
+    
+    # Upcoming Exams
+    upcoming_exams = Exam.objects.filter(course__in=courses, status='Scheduled').order_by('date')
+    
+    # Recent Results
+    recent_results = Result.objects.filter(student=student, status='Released').order_by('-created_at')[:5]
+    
+    # Study Materials
+    materials = StudyMaterial.objects.filter(course__in=courses, status='Approved').order_by('-uploaded_at')
+
+    context = {
+        'student': student,
+        'courses': courses,
+        'upcoming_exams': upcoming_exams,
+        'recent_results': recent_results,
+        'materials': materials,
+    }
+    return render(request, 'student_dashboard.html', context)
+
+from django.http import JsonResponse
+import json
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def submit_ai_query(request):
+    if not request.session.get('role') == 'student':
+         return JsonResponse({'error': 'Unauthorized'}, status=403)
+         
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            query = data.get('query')
+            course_id = data.get('course_id') # Optional context
+            
+            # Simulate AI Response
+            ai_response = f"Simulated AI Explanation for: '{query}'. \n\nKey Concepts: [Concept A], [Concept B]. \nExample: Imagine a scenario where..."
+            
+            # Log the query
+            student = request.user
+            course = Course.objects.get(id=course_id) if course_id else None
+            
+            if course:
+                 AIClarificationLog.objects.create(
+                    course=course,
+                    student=student,
+                    query_text=query
+                )
+            
+            return JsonResponse({'response': ai_response})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+            
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+def exam_interface(request, exam_id):
+    if not request.session.get('role') == 'student':
+        return redirect('login')
+        
+    exam = Exam.objects.get(id=exam_id)
+    
+    context = {
+        'exam': exam,
+        'student': request.user
+    }
+    return render(request, 'exam_interface.html', context)
+
+def submit_exam(request, exam_id):
+    if request.method == 'POST':
+        messages.success(request, "Exam submitted successfully! Results will be available shortly.")
+        return redirect('student_dashboard')
+    return redirect('student_dashboard')
     return redirect('principal_dashboard')
 

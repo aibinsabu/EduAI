@@ -39,6 +39,12 @@ urlpatterns = [
     path('teacher/result/<int:result_id>/', views.result_detail, name='result_detail'),
     path('teacher/result/<int:result_id>/finalize/', views.finalize_result, name='finalize_result'),
 
+    # --- Student Interface ---
+    path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
+    path('student/ai-query/', views.submit_ai_query, name='submit_ai_query'),
+    path('student/exam/<int:exam_id>/', views.exam_interface, name='exam_interface'),
+    path('student/exam/<int:exam_id>/submit/', views.submit_exam, name='submit_exam'),
+
     # --- Principal Interface ---
     path('principal/dashboard/', views.principal_dashboard, name='principal_dashboard'),
     path('principal/teacher/<int:teacher_id>/approve/', views.approve_teacher, name='approve_teacher'),

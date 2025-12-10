@@ -1,0 +1,364 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Dashboard specific styles */
+    .dashboard-container {
+        padding: 40px 0;
+        background-color: #f8f9fa;
+        min-height: 80vh;
+    }
+
+    .student-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+    }
+
+    .student-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: #0d6efd;
+    }
+
+    .exam-status-scheduled {
+        color: #ffc107;
+        font-weight: bold;
+    }
+
+    .exam-status-completed {
+        color: #198754;
+        font-weight: bold;
+    }
+
+    .resource-icon {
+        font-size: 24px;
+        color: #0d6efd;
+        margin-right: 10px;
+    }
+
+    /* AI Chat Widget */
+    .ai-widget {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-history {
+        flex-grow: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background: #f8f9fa;
+    }
+
+    .chat-input-area {
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #dee2e6;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+
+    .message {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 8px;
+        max-width: 80%;
+    }
+
+    .message.user {
+        background-color: #0d6efd;
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+    }
+
+    .message.ai {
+        background-color: #e9ecef;
+        color: #212529;
+        align-self: flex-start;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="container">
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="row align-items-center">
+                <div class="col-md-2 text-center">
+                    {% if student.profile %}
+                    <img src="{{ student.profile.url }}" alt="Profile" class="rounded-circle img-thumbnail"
+                        style="width: 100px; height: 100px; object-fit: cover;">
+                    {% else %}
+                    <div class="rounded-circle img-thumbnail d-flex align-items-center justify-content-center bg-light text-primary mx-auto"
+                        style="width: 100px; height: 100px;">
+                        <i class="bi bi-person-fill" style="font-size: 3rem;"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-7">
+                    <h2>Welcome back, {{ student.first_name }}!</h2>
+                    <p class="mb-0">{{ student.registration_no }} | Department: {{ student.department }}</p>
+                </div>
+                <div class="col-md-3 text-end">
+                    <div class="card bg-white text-dark p-2">
+                        <div class="small text-muted">Upcoming Exams</div>
+                        <div class="h3 mb-0">{{ upcoming_exams|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tabs -->
+        <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="pills-materials-tab" data-bs-toggle="pill"
+                    data-bs-target="#pills-materials" type="button" role="tab">Learning Resources</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pills-exams-tab" data-bs-toggle="pill" data-bs-target="#pills-exams"
+                    type="button" role="tab">Assessments & Exams</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pills-results-tab" data-bs-toggle="pill" data-bs-target="#pills-results"
+                    type="button" role="tab">Results & Analytics</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="pills-tabContent">
+
+            <!-- Learning Materials & AI Section -->
+            <div class="tab-pane fade show active" id="pills-materials" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="student-card">
+                            <h4 class="mb-4">My Study Materials</h4>
+                            {% if materials %}
+                            <div class="list-group">
+                                {% for material in materials %}
+                                {% if material.file %}
+                                <a href="{{ material.file.url }}"
+                                    class="list-group-item list-group-item-action d-flex align-items-center"
+                                    target="_blank" download>
+                                    <div class="resource-icon">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">{{ material.title }}</h6>
+                                        <small class="text-muted">{{ material.course.name }} • Uploaded by {{
+                                            material.teacher.first_name }}</small>
+                                    </div>
+                                    <span class="badge bg-light text-dark"><i class="bi bi-download"></i>
+                                        Download</span>
+                                </a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">No study materials available yet.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="student-card">
+                            <h4 class="mb-3">AI Clarification Portal</h4>
+                            <p class="small text-muted">Ask the AI to explain complex topics from your courses.</p>
+                            <div class="ai-widget">
+                                <div class="chat-history" id="chatHistory">
+                                    <div class="message ai">Hello! I'm your AI learning assistant. Ask me anything about
+                                        your course topics.</div>
+                                </div>
+                                <div class="chat-input-area d-flex">
+                                    <select class="form-select me-2" id="courseSelect" style="width: 30%;">
+                                        <option value="">General</option>
+                                        {% for course in courses %}
+                                        <option value="{{ course.id }}">{{ course.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="text" id="aiQueryInput" class="form-control me-2"
+                                        placeholder="Ask a question..." onkeypress="handleKeyPress(event)">
+                                    <button class="btn btn-primary" onclick="sendAiQuery()"><i
+                                            class="bi bi-send"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exams Section -->
+            <div class="tab-pane fade" id="pills-exams" role="tabpanel">
+                <div class="student-card">
+                    <h4 class="mb-4">Upcoming Examinations</h4>
+                    {% if upcoming_exams %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Exam Title</th>
+                                    <th>Course</th>
+                                    <th>Date & Time</th>
+                                    <th>Duration</th>
+                                    <th>Format</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for exam in upcoming_exams %}
+                                <tr>
+                                    <td>{{ exam.title }}</td>
+                                    <td>{{ exam.course.name }}</td>
+                                    <td>{{ exam.date|date:"M d, Y H:i" }}</td>
+                                    <td>{{ exam.duration }} mins</td>
+                                    <td><span class="badge bg-secondary">{{ exam.exam_type }}</span></td>
+                                    <td>
+                                        <!-- Logic to check if exam is strictly active can be added here -->
+                                        <a href="{% url 'exam_interface' exam.id %}" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-pencil-square"></i> Take Exam
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">No exams scheduled at the moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="tab-pane fade" id="pills-results" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="student-card">
+                            <h4 class="mb-4">Recent Results</h4>
+                            {% if recent_results %}
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Exam</th>
+                                            <th>Date Taken</th>
+                                            <th>Score</th>
+                                            <th>Status</th>
+                                            <th>AI Feedback</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for result in recent_results %}
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">{{ result.exam.title }}</div>
+                                                <div class="small text-muted">{{ result.exam.course.name }}</div>
+                                            </td>
+                                            <td>{{ result.created_at|date:"M d, Y" }}</td>
+                                            <td>
+                                                <span
+                                                    class="h5 mb-0 {% if result.is_pass %}text-success{% else %}text-danger{% endif %}">
+                                                    {{ result.score }}%
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if result.is_pass %}
+                                                <span class="badge bg-success">Passed</span>
+                                                {% else %}
+                                                <span class="badge bg-danger">Failed</span>
+                                                {% endif %}
+                                            </td>
+                                            <td style="width: 40%;">
+                                                <small class="text-muted d-block text-truncate"
+                                                    style="max-width: 300px;" title="{{ result.ai_feedback }}">
+                                                    {{ result.ai_feedback|default:"No feedback available" }}
+                                                </small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center py-4">No results available yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    async function sendAiQuery() {
+        const input = document.getElementById('aiQueryInput');
+        const courseId = document.getElementById('courseSelect').value;
+        const query = input.value.trim();
+        const history = document.getElementById('chatHistory');
+
+        if (!query) return;
+
+        // Add user message
+        const userMsg = document.createElement('div');
+        userMsg.className = 'message user';
+        userMsg.innerText = query;
+        history.appendChild(userMsg);
+
+        // Clear input
+        input.value = '';
+        history.scrollTop = history.scrollHeight;
+
+        try {
+            const response = await fetch('{% url "submit_ai_query" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // CSRF handled by @csrf_exempt for this demo, or use cookie
+                },
+                body: JSON.stringify({ query: query, course_id: courseId })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'message ai';
+                aiMsg.innerText = data.response;
+                history.appendChild(aiMsg);
+            } else {
+                throw new Error('Failed to get response');
+            }
+        } catch (error) {
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'message ai text-danger';
+            errorMsg.innerText = "Sorry, I couldn't reach the AI service right now.";
+            history.appendChild(errorMsg);
+        }
+
+        history.scrollTop = history.scrollHeight;
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendAiQuery();
+        }
+    }
+</script>
+{% endblock %}

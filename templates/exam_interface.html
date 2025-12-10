@@ -1,0 +1,240 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Fullscreen Exam Mode Styles */
+    body.exam-mode {
+        user-select: none;
+        /* Disable text selection */
+    }
+
+    .exam-container {
+        max-width: 900px;
+        margin: 50px auto;
+        padding: 20px;
+    }
+
+    .exam-header {
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        position: sticky;
+        top: 20px;
+        z-index: 1000;
+    }
+
+    .timer-box {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #dc3545;
+        background: #ffe6e6;
+        padding: 5px 15px;
+        border-radius: 5px;
+    }
+
+    .question-card {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+
+    .security-check-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+    }
+
+    .check-step {
+        text-align: center;
+        max-width: 500px;
+    }
+
+    .step-icon {
+        font-size: 3rem;
+        margin-bottom: 20px;
+        color: #0d6efd;
+    }
+
+    .camera-preview {
+        width: 320px;
+        height: 240px;
+        background: #333;
+        margin: 0 auto 20px;
+        border: 2px solid #0d6efd;
+    }
+</style>
+
+<!-- Security Check Overlay (Initial State) -->
+<div id="securityOverlay" class="security-check-overlay">
+
+    <!-- Step 1: Agreements -->
+    <div id="step1" class="check-step">
+        <div class="step-icon"><i class="bi bi-shield-lock"></i></div>
+        <h3>Secure Exam Environment</h3>
+        <p class="mb-4">This exam is monitored. By proceeding, you agree to:</p>
+        <ul class="text-start mb-4">
+            <li>Full screen mode enforcement</li>
+            <li>Camera and Microphone monitoring</li>
+            <li>Tab switch tracking</li>
+        </ul>
+        <button class="btn btn-primary btn-lg" onclick="nextStep(2)">I Agree & Continue</button>
+    </div>
+
+    <!-- Step 2: Hardware Check -->
+    <div id="step2" class="check-step" style="display: none;">
+        <div class="step-icon"><i class="bi bi-camera-video"></i></div>
+        <h3>System Check</h3>
+        <p>Please allow camera access to proceed.</p>
+        <video id="webcamPreview" class="camera-preview" autoplay playsinline muted></video>
+        <div id="checkStatus" class="mb-3 text-warning">Waiting for permissions...</div>
+        <button id="startExamBtn" class="btn btn-success btn-lg" onclick="startExam()" disabled>Start Exam</button>
+    </div>
+
+</div>
+
+<div class="exam-container">
+
+    <div class="exam-header">
+        <div>
+            <h4 class="mb-0">{{ exam.title }}</h4>
+            <small class="text-muted">{{ exam.course.name }}</small>
+        </div>
+        <div class="timer-box" id="examTimer">
+            00:00:00
+        </div>
+    </div>
+
+    <form action="{% url 'submit_exam' exam.id %}" method="POST" id="examForm">
+        {% csrf_token %}
+
+        <!-- Mock Questions -->
+        <div class="question-card">
+            <h5>Question 1</h5>
+            <p>What is the primary function of the Django `models.py` file?</p>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="q1" id="q1a" value="A">
+                <label class="form-check-label" for="q1a">To define the database schema</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="q1" id="q1b" value="B">
+                <label class="form-check-label" for="q1b">To handle URL routing</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="q1" id="q1c" value="C">
+                <label class="form-check-label" for="q1c">To render HTML templates</label>
+            </div>
+        </div>
+
+        <div class="question-card">
+            <h5>Question 2</h5>
+            <p>Which method is used to save a model instance to the database?</p>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="q2" id="q2a" value="A">
+                <label class="form-check-label" for="q2a">create()</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="q2" id="q2b" value="B">
+                <label class="form-check-label" for="q2b">save()</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="q2" id="q2c" value="C">
+                <label class="form-check-label" for="q2c">commit()</label>
+            </div>
+        </div>
+
+        <!-- Add more dynamic questions here -->
+
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg">Submit Exam</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Fix: Extract template tag to variable to avoid parser confusion
+    const rawDuration = "{{ exam.duration|default:0 }}";
+    let examDurationSeconds = parseInt(rawDuration) * 60; // in seconds
+    let timerInterval;
+
+    function nextStep(step) {
+        document.querySelectorAll('.check-step').forEach(el => el.style.display = 'none');
+        document.getElementById('step' + step).style.display = 'block';
+
+        if (step === 2) {
+            initCamera();
+        }
+    }
+
+    async function initCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const video = document.getElementById('webcamPreview');
+            video.srcObject = stream;
+            document.getElementById('checkStatus').className = 'text-success mb-3';
+            document.getElementById('checkStatus').innerText = '✓ Camera & Audio Connected';
+            document.getElementById('startExamBtn').disabled = false;
+        } catch (err) {
+            document.getElementById('checkStatus').className = 'text-danger mb-3';
+            document.getElementById('checkStatus').innerText = 'Error: Camera Access Denied. You cannot proceed.';
+            console.error(err);
+        }
+    }
+
+    function startExam() {
+        // Hide overlay
+        document.getElementById('securityOverlay').style.display = 'none';
+
+        // Enter Fullscreen
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log("Fullscreen optional for dev");
+        });
+
+        // Start Timer
+        startTimer();
+
+        // Enforce focus
+        window.onblur = function () {
+            alert("WARNING: You left the exam window! This incident has been logged.");
+            // Log to backend strictly speaking
+        };
+    }
+
+    function startTimer() {
+        const timerDisplay = document.getElementById('examTimer');
+
+        timerInterval = setInterval(() => {
+            let hours = Math.floor(examDurationSeconds / 3600);
+            let minutes = Math.floor((examDurationSeconds % 3600) / 60);
+            let seconds = examDurationSeconds % 60;
+
+            timerDisplay.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+
+            if (--examDurationSeconds < 0) {
+                clearInterval(timerInterval);
+                alert("Time is up! Submitting your exam.");
+                document.getElementById('examForm').submit();
+            }
+        }, 1000);
+    }
+
+    function pad(num) {
+        return num.toString().padStart(2, '0');
+    }
+</script>
+{% endblock %}
