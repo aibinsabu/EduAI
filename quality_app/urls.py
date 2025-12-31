@@ -51,6 +51,10 @@ urlpatterns = [
     path('principal/dashboard/', views.principal_dashboard, name='principal_dashboard'),
     path('principal/teacher/<int:teacher_id>/approve/', views.approve_teacher, name='approve_teacher'),
     path('principal/teacher/<int:teacher_id>/reject/', views.reject_teacher, name='reject_teacher'),
+    path('principal/students/', views.principal_student_list, name='principal_student_list'),
+    path('principal/teachers/', views.principal_teacher_list, name='principal_teacher_list'),
+    path('principal/teacher/<int:teacher_id>/edit/', views.principal_edit_teacher, name='principal_edit_teacher'),
+    path('principal/report/generate/', views.generate_principal_report, name='generate_principal_report'),
     
     # --- Admin Interface ---
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
@@ -60,5 +64,6 @@ urlpatterns = [
     path('admin-dashboard/system-health/', views.system_health, name='system_health'),
 ]
 
+# Force reload triggers
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

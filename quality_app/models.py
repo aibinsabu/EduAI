@@ -81,6 +81,7 @@ class Teacher(models.Model):
     gender = models.CharField(max_length=10, )
     registration_no = models.CharField(max_length=50, unique=True)
     department = models.CharField(max_length=100,)
+    designation = models.CharField(max_length=100, default='Teacher')
     address = models.TextField()
     password = models.CharField(max_length=100)
     profile = models.ImageField(upload_to="profile/teacher/")

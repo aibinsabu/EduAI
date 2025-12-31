@@ -55,7 +55,14 @@
                         <a href="{% url 'admin_user_list' 'student' %}"
                             class="block py-2 px-2 text-sm text-gray-400 hover:text-white rounded hover:bg-gray-800">Students</a>
                         <a href="{% url 'admin_user_list' 'teacher' %}"
-                            class="block py-2 px-2 text-sm text-gray-400 hover:text-white rounded hover:bg-gray-800">Teachers</a>
+                            class="flex items-center justify-between py-2 px-2 text-sm text-gray-400 hover:text-white rounded hover:bg-gray-800">
+                            <span>Teachers</span>
+                            {% if pending_teachers_count > 0 %}
+                            <span
+                                class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{
+                                pending_teachers_count }}</span>
+                            {% endif %}
+                        </a>
                         <a href="{% url 'admin_user_list' 'hod' %}"
                             class="block py-2 px-2 text-sm text-gray-400 hover:text-white rounded hover:bg-gray-800">HODs</a>
                         <a href="{% url 'admin_user_list' 'principal' %}"
@@ -113,78 +120,7 @@
             </div>
             {% endif %}
 
-            <!-- User Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Total Students -->
-                <div class="glass-panel p-6 border-l-4 border-blue-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-xs font-semibold text-gray-500 uppercase">Students</p>
-                            <a href="{% url 'admin_user_list' 'student' %}" class="hover:underline text-blue-600">
-                                <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_students }}</h3>
-                            </a>
-                        </div>
-                        <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
-                            <i class="fas fa-user-graduate"></i>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Registered Users</p>
-                </div>
-
-                <!-- Total Teachers -->
-                <div class="glass-panel p-6 border-l-4 border-indigo-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-xs font-semibold text-gray-500 uppercase">Teachers</p>
-                            <a href="{% url 'admin_user_list' 'teacher' %}" class="hover:underline text-indigo-600">
-                                <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_teachers }}</h3>
-                            </a>
-                        </div>
-                        <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                            <i class="fas fa-chalkboard-teacher"></i>
-                        </div>
-                    </div>
-                    <p class="text-xs text-yellow-600 mt-2">
-                        {% if pending_teachers_count > 0 %}
-                        <i class="fas fa-exclamation-circle"></i> {{ pending_teachers_count }} Pending Approval
-                        {% else %}
-                        All Verified
-                        {% endif %}
-                    </p>
-                </div>
-
-                <!-- HODs -->
-                <div class="glass-panel p-6 border-l-4 border-purple-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-xs font-semibold text-gray-500 uppercase">HODs</p>
-                            <a href="{% url 'admin_user_list' 'hod' %}" class="hover:underline text-purple-600">
-                                <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_hods }}</h3>
-                            </a>
-                        </div>
-                        <div class="p-2 bg-purple-50 rounded-lg text-purple-600">
-                            <i class="fas fa-user-tie"></i>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Department Heads</p>
-                </div>
-
-                <!-- Principals -->
-                <div class="glass-panel p-6 border-l-4 border-red-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-xs font-semibold text-gray-500 uppercase">Principals</p>
-                            <a href="{% url 'admin_user_list' 'principal' %}" class="hover:underline text-red-600">
-                                <h3 class="text-3xl font-bold text-gray-800 mt-2">{{ total_principals }}</h3>
-                            </a>
-                        </div>
-                        <div class="p-2 bg-red-50 rounded-lg text-red-600">
-                            <i class="fas fa-university"></i>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Institution Leaders</p>
-                </div>
-            </div>
+            <!-- User Stats Grid Removed (Moved to Sidebar) -->
 
             <!-- System Metrics -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

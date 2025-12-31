@@ -35,10 +35,15 @@
                     <i class="fas fa-chart-line w-5"></i>
                     <span>Overview</span>
                 </a>
-                <a href="#faculty"
+                <a href="{% url 'principal_student_list' %}"
+                    class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                    <i class="fas fa-user-graduate w-5"></i>
+                    <span>Students</span>
+                </a>
+                <a href="{% url 'principal_teacher_list' %}"
                     class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
                     <i class="fas fa-chalkboard-teacher w-5"></i>
-                    <span>Faculty Mgmt</span>
+                    <span>Teachers</span>
                 </a>
                 <a href="#integrity"
                     class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
@@ -70,17 +75,17 @@
             <div class="flex justify-between items-center mb-8">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
-                    <p class="text-sm text-gray-500">Welcome back, Principal {{ principal.last_name }}</p>
+                    <p class="text-sm text-gray-500">Welcome back, Principal {{ principal.first_name }}</p>
                 </div>
                 <div class="flex space-x-3">
                     <button
                         class="bg-white p-2 rounded-lg shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50">
                         <i class="fas fa-bell"></i>
                     </button>
-                    <button
-                        class="bg-indigo-600 px-4 py-2 rounded-lg text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition">
+                    <a href="{% url 'generate_principal_report' %}"
+                        class="bg-indigo-600 px-4 py-2 rounded-lg text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition flex items-center">
                         Generate Report
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -172,7 +177,7 @@
                 </div>
 
                 <!-- AI Efficacy & Integrity -->
-                <div class="glass-panel p-6">
+                <div class="glass-panel p-6" id="integrity">
                     <h3 class="text-lg font-bold text-gray-800 mb-4">AI System Integrity</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-gray-50 p-4 rounded-xl">
@@ -233,7 +238,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-gray-800">Faculty Approval Queue</h3>
                         <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">{{
-                            pending_teachers|length }} Pending</span>
+                            pending_teachers_count }} Pending</span>
                     </div>
 
                     <div class="overflow-x-auto">
