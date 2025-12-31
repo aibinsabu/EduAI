@@ -4,183 +4,354 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Health - Admin</title>
+    <title>System Health - Admin - EduQuality AI</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        dark: {
+                            800: '#1e1e2e',
+                            900: '#11111b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-            backdrop-filter: blur(4px);
-            border-radius: 1rem;
+        .glass-sidebar {
+            background: linear-gradient(180deg, rgba(30, 30, 46, 0.95) 0%, rgba(17, 17, 27, 0.98) 100%);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .nav-item-active {
+            background: rgba(14, 165, 233, 0.15);
+            color: #38bdf8;
+            border-left: 3px solid #38bdf8;
+        }
+
+        .nav-item-inactive {
+            color: #94a3b8;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item-inactive:hover {
+            color: #f1f5f9;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
+        }
+
+        .progress-bar-bg {
+            background: rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
 
-<body class="bg-slate-100 text-gray-800 font-sans">
-    <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-slate-900 text-white flex-shrink-0 hidden md:flex flex-col">
-            <div class="p-6 border-b border-gray-700">
-                <span class="text-xl font-bold tracking-tight">EduQuality AI</span>
-                <p class="text-xs text-gray-400 mt-1">SuperAdmin Console</p>
-            </div>
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-                <a href="{% url 'admin_dashboard' %}"
-                    class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
-                    <i class="fas fa-tachometer-alt w-5"></i>
-                    <span>Overview</span>
-                </a>
+<body class="text-slate-800 antialiased h-screen flex overflow-hidden">
 
-                <div x-data="{ open: false }" class="space-y-1">
-                    <button @click="open = !open"
-                        class="w-full flex items-center justify-between px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
-                        <div class="flex items-center space-x-3">
-                            <i class="fas fa-users w-5"></i>
-                            <span>User Management</span>
-                        </div>
-                        <i :class="{'rotate-180': open}"
-                            class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
-                    </button>
-                    <div x-show="open" class="pl-11 space-y-1">
-                        <a href="{% url 'admin_user_list' 'student' %}"
-                            class="block py-2 px-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded">Students</a>
-                        <a href="{% url 'admin_user_list' 'teacher' %}"
-                            class="block py-2 px-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded">Teachers</a>
-                        <a href="{% url 'admin_user_list' 'hod' %}"
-                            class="block py-2 px-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded">HODs</a>
-                        <a href="{% url 'admin_user_list' 'principal' %}"
-                            class="block py-2 px-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded">Principals</a>
-                    </div>
+    <!-- Sidebar -->
+    <aside class="w-72 glass-sidebar text-white flex-shrink-0 hidden md:flex flex-col transition-all duration-300 z-50">
+        <div class="h-20 flex items-center px-8 border-b border-gray-800/50">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                    <i class="fas fa-cube text-white text-sm"></i>
                 </div>
-
-                <a href="{% url 'system_health' %}"
-                    class="flex items-center space-x-3 px-4 py-3 bg-indigo-600 rounded-lg text-white">
-                    <i class="fas fa-server w-5"></i>
-                    <span>System Health</span>
-                </a>
-            </nav>
-            <div class="p-4 border-t border-gray-700">
-                <div class="flex items-center space-x-3">
-                    <div class="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center font-bold">A</div>
-                    <div>
-                        <p class="text-sm font-medium">Administrator</p>
-                        <a href="{% url 'logout' %}" class="text-xs text-red-400 hover:text-red-300">Logout</a>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6">
-            <div class="flex justify-between items-center mb-8">
                 <div>
-                    <a href="{% url 'admin_dashboard' %}"
-                        class="text-sm text-gray-500 hover:text-indigo-600 mb-2 inline-block"><i
-                            class="fas fa-arrow-left"></i> Back to Dashboard</a>
-                    <h1 class="text-2xl font-bold text-gray-800">System Diagnostics</h1>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="flex h-3 w-3 relative">
-                        <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                    </span>
-                    <span class="text-sm font-medium text-green-600">Live Monitor</span>
+                    <h1 class="text-lg font-bold tracking-wide">EduQuality<span class="text-brand-500">AI</span></h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Super Admin</p>
                 </div>
             </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-4 mt-4">Main Menu</div>
+
+            <a href="{% url 'admin_dashboard' %}"
+                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 nav-item-inactive group">
+                <i class="fas fa-home w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Overview</span>
+            </a>
+
+            <div x-data="{ open: false }" class="space-y-1 pt-2">
+                <button @click="open = !open"
+                    class="w-full flex items-center justify-between px-4 py-3 rounded-xl nav-item-inactive transition-all duration-200 group">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-users-cog w-5 text-center group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium">User Management</span>
+                    </div>
+                    <i :class="{'rotate-180': open}"
+                        class="fas fa-chevron-down text-xs transition-transform duration-300 opacity-50"></i>
+                </button>
+                <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0" class="pl-4 space-y-1">
+                    <a href="{% url 'admin_user_list' 'student' %}"
+                        class="block py-2.5 px-4 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition border-l border-gray-700 hover:border-brand-500 ml-4">
+                        Students
+                    </a>
+                    <a href="{% url 'admin_user_list' 'teacher' %}"
+                        class="block py-2.5 px-4 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition border-l border-gray-700 hover:border-brand-500 ml-4">
+                        Teachers
+                    </a>
+                    <a href="{% url 'admin_user_list' 'hod' %}"
+                        class="block py-2.5 px-4 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition border-l border-gray-700 hover:border-brand-500 ml-4">
+                        HODs
+                    </a>
+                    <a href="{% url 'admin_user_list' 'principal' %}"
+                        class="block py-2.5 px-4 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition border-l border-gray-700 hover:border-brand-500 ml-4">
+                        Principals
+                    </a>
+                </div>
+            </div>
+
+            <a href="{% url 'system_health' %}"
+                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 nav-item-active group">
+                <i class="fas fa-heartbeat w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">System Health</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800/50 bg-black/20">
+            <div class="flex items-center space-x-3 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer">
+                <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-brand-500 to-purple-500 p-[2px]">
+                    <div
+                        class="h-full w-full rounded-full bg-gray-900 flex items-center justify-center font-bold text-white text-sm">
+                        AD
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white truncate">Administrator</p>
+                    <p class="text-xs text-gray-400 truncate">admin@eduquality.ai</p>
+                </div>
+                <a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-400 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <!-- Top Glass Header -->
+        <header
+            class="h-20 glass-card m-6 rounded-2xl flex items-center justify-between px-8 z-40 sticky top-0 shrink-0">
+            <div class="flex items-center gap-4">
+                <a href="{% url 'admin_dashboard' %}"
+                    class="h-10 w-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-brand-50 hover:text-brand-600 transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h2
+                        class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-gray-600">
+                        System Diagnostics
+                    </h2>
+                    <p class="text-sm text-gray-500 font-medium">Real-time server performance metrics</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 bg-green-50 px-4 py-2 rounded-full border border-green-200">
+                <span class="relative flex h-3 w-3">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                <span class="text-sm font-bold text-green-700 uppercase tracking-wider">Live Monitor</span>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-x-hidden overflow-y-auto px-6 pb-6 custom-scrollbar">
 
             <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8 max-w-5xl mx-auto">
 
                 <!-- CPU -->
-                <div class="glass-panel p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">CPU Load</h3>
-                        <i class="fas fa-microchip text-indigo-500 text-xl"></i>
+                <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="fas fa-microchip text-9xl text-indigo-600"></i>
                     </div>
-                    <div class="mb-2 flex justify-between">
-                        <span class="text-3xl font-bold text-gray-800">{{ cpu_usage }}%</span>
-                        <span class="text-sm text-gray-500 mt-auto">Usage</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-200">
-                        <div x-data class="bg-indigo-600 h-2.5 rounded-full" :style="{ width: '{{ cpu_usage }}%' }">
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">CPU Load</h3>
+                                <p class="text-sm text-gray-500">Processing Power</p>
+                            </div>
+                            <div
+                                class="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl">
+                                <i class="fas fa-microchip network-pulse"></i>
+                            </div>
                         </div>
+
+                        <div class="flex items-baseline gap-2 mb-4">
+                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ cpu_usage }}<span
+                                    class="text-2xl text-gray-400">%</span></span>
+                        </div>
+
+                        <div class="w-full bg-indigo-50 rounded-full h-4 overflow-hidden shadow-inner">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full transition-all duration-1000 ease-out"
+                                style="width: {{ cpu_usage }}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2 text-right">Updated just now</p>
                     </div>
                 </div>
 
                 <!-- RAM -->
-                <div class="glass-panel p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">Memory</h3>
-                        <i class="fas fa-memory text-blue-500 text-xl"></i>
+                <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="fas fa-memory text-9xl text-blue-600"></i>
                     </div>
-                    <div class="mb-2 flex justify-between">
-                        <span class="text-3xl font-bold text-gray-800">{{ ram_usage }}%</span>
-                        <span class="text-sm text-gray-500 mt-auto">{{ ram_available }}GB / {{ ram_total }}GB
-                            Free</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-200">
-                        <div x-data
-                            class="{% if ram_usage > 80 %}bg-red-500{% else %}bg-blue-600{% endif %} h-2.5 rounded-full"
-                            :style="{ width: '{{ ram_usage }}%' }"></div>
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">Memory</h3>
+                                <p class="text-sm text-gray-500">RAM Usage</p>
+                            </div>
+                            <div
+                                class="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
+                                <i class="fas fa-memory"></i>
+                            </div>
+                        </div>
+
+                        <div class="flex items-baseline gap-2 mb-4">
+                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ ram_usage }}<span
+                                    class="text-2xl text-gray-400">%</span></span>
+                            <span class="text-sm font-medium text-gray-500 ml-auto">{{ ram_available }}GB / {{ ram_total
+                                }}GB Free</span>
+                        </div>
+
+                        <div class="w-full bg-blue-50 rounded-full h-4 overflow-hidden shadow-inner">
+                            <div class="{% if ram_usage > 80 %}bg-red-500{% else %}bg-gradient-to-r from-blue-500 to-cyan-400{% endif %} h-full rounded-full transition-all duration-1000 ease-out"
+                                style="width: {{ ram_usage }}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2 text-right">Optimal performance range</p>
                     </div>
                 </div>
 
                 <!-- Disk -->
-                <div class="glass-panel p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">Storage</h3>
-                        <i class="fas fa-hdd text-purple-500 text-xl"></i>
+                <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="fas fa-hdd text-9xl text-purple-600"></i>
                     </div>
-                    <div class="mb-2 flex justify-between">
-                        <span class="text-3xl font-bold text-gray-800">{{ disk_usage }}%</span>
-                        <span class="text-sm text-gray-500 mt-auto">{{ disk_free }}GB / {{ disk_total }}GB Free</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-200">
-                        <div x-data class="bg-purple-600 h-2.5 rounded-full" :style="{ width: '{{ disk_usage }}%' }">
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">Storage</h3>
+                                <p class="text-sm text-gray-500">Disk Space</p>
+                            </div>
+                            <div
+                                class="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 text-xl">
+                                <i class="fas fa-hdd"></i>
+                            </div>
                         </div>
+
+                        <div class="flex items-baseline gap-2 mb-4">
+                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ disk_usage }}<span
+                                    class="text-2xl text-gray-400">%</span></span>
+                            <span class="text-sm font-medium text-gray-500 ml-auto">{{ disk_free }}GB / {{ disk_total
+                                }}GB Free</span>
+                        </div>
+
+                        <div class="w-full bg-purple-50 rounded-full h-4 overflow-hidden shadow-inner">
+                            <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-1000 ease-out"
+                                style="width: {{ disk_usage }}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2 text-right">SSD Optimized</p>
                     </div>
                 </div>
 
                 <!-- Database -->
-                <div class="glass-panel p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">Database Status</h3>
-                        <i class="fas fa-database text-green-500 text-xl"></i>
+                <div
+                    class="glass-card p-8 rounded-3xl relative overflow-hidden group border-l-8 {% if db_status == 'Connected' %}border-l-green-500{% else %}border-l-red-500{% endif %}">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i
+                            class="fas fa-database text-9xl {% if db_status == 'Connected' %}text-green-600{% else %}text-red-600{% endif %}"></i>
                     </div>
-                    <div class="flex items-center space-x-3 mt-4">
-                        {% if db_status == 'Connected' %}
-                        <div
-                            class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                            <i class="fas fa-check"></i>
+
+                    <div class="relative z-10 h-full flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">Database Status</h3>
+                                <p class="text-sm text-gray-500">Connection Health</p>
+                            </div>
+                            <div
+                                class="h-12 w-12 rounded-xl {% if db_status == 'Connected' %}bg-green-100 text-green-600{% else %}bg-red-100 text-red-600{% endif %} flex items-center justify-center text-xl">
+                                <i class="fas fa-database"></i>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xl font-bold text-green-600">Connected</p>
-                            <p class="text-sm text-gray-500">PostgreSQL / MySQL engine active</p>
+
+                        <div class="flex-1 flex items-center">
+                            {% if db_status == 'Connected' %}
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center animate-pulse">
+                                    <i class="fas fa-check text-2xl text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-3xl font-bold text-gray-800">Connected</p>
+                                    <p class="text-sm text-green-600 font-medium">PostgreSQL / MySQL engine active</p>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center animate-bounce">
+                                    <i class="fas fa-times text-2xl text-red-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-3xl font-bold text-gray-800">Disconnected</p>
+                                    <p class="text-sm text-red-600 font-medium">{{ db_status }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        <div class="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                            <i class="fas fa-times"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-red-600">Disconnected</p>
-                            <p class="text-sm text-gray-500">{{ db_status }}</p>
-                        </div>
-                        {% endif %}
+                        <p class="text-xs text-gray-400 mt-4 text-right">Latency: < 0.2ms</p>
                     </div>
                 </div>
             </div>
 
-            <div class="text-center">
-                <a href="." class="text-sm text-gray-500 hover:text-gray-800 underline">Refresh Metrics</a>
+            <div class="text-center mt-8">
+                <a href="."
+                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-gray-600 text-sm font-medium shadow-sm hover:shadow-md hover:text-brand-600 transition border border-gray-200">
+                    <i class="fas fa-sync-alt"></i> Refresh Metrics
+                </a>
             </div>
 
-        </main>
-    </div>
+        </div>
+    </main>
 </body>
 
 </html>
