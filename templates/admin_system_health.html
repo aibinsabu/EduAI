@@ -223,7 +223,7 @@
 
                         <div class="w-full bg-indigo-50 rounded-full h-4 overflow-hidden shadow-inner">
                             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full transition-all duration-1000 ease-out"
-                                style="width: {{ cpu_usage }}%"></div>
+                                :style="'width: {{ cpu_usage }}%;'"></div>
                         </div>
                         <p class="text-xs text-gray-400 mt-2 text-right">Updated just now</p>
                     </div>
@@ -255,7 +255,7 @@
 
                         <div class="w-full bg-blue-50 rounded-full h-4 overflow-hidden shadow-inner">
                             <div class="{% if ram_usage > 80 %}bg-red-500{% else %}bg-gradient-to-r from-blue-500 to-cyan-400{% endif %} h-full rounded-full transition-all duration-1000 ease-out"
-                                style="width: {{ ram_usage }}%"></div>
+                                :style="'width: {{ ram_usage }}%;'"></div>
                         </div>
                         <p class="text-xs text-gray-400 mt-2 text-right">Optimal performance range</p>
                     </div>
@@ -287,7 +287,7 @@
 
                         <div class="w-full bg-purple-50 rounded-full h-4 overflow-hidden shadow-inner">
                             <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-1000 ease-out"
-                                style="width: {{ disk_usage }}%"></div>
+                                :style="'width: {{ disk_usage }}%;'"></div>
                         </div>
                         <p class="text-xs text-gray-400 mt-2 text-right">SSD Optimized</p>
                     </div>

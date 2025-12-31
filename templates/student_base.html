@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Portal - EduQuality AI</title>
+    <title>Student Portal - EduQuality AI</title>
     <!-- Google Fonts: Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
@@ -34,8 +34,6 @@
             }
         }
     </script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Alpine.js -->
@@ -94,7 +92,7 @@
     </style>
 </head>
 
-<body class="text-slate-800 antialiased h-screen flex overflow-hidden">
+<body class="text-slate-800 antialiased h-screen flex overflow-hidden" x-data="{ currentTab: 'overview' }">
 
     <!-- Sidebar -->
     <aside class="w-72 glass-sidebar text-white flex-shrink-0 hidden md:flex flex-col transition-all duration-300 z-50">
@@ -102,54 +100,62 @@
             <div class="flex items-center gap-3">
                 <div
                     class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
-                    <i class="fas fa-university text-white text-sm"></i>
+                    <i class="fas fa-graduation-cap text-white text-sm"></i>
                 </div>
                 <div>
                     <h1 class="text-lg font-bold tracking-wide">EduQuality<span class="text-brand-500">AI</span></h1>
-                    <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Teacher Portal</p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Student Portal</p>
                 </div>
             </div>
         </div>
 
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-4 mt-4">Platform</div>
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-4 mt-4">Menu</div>
 
-            <a href="{% url 'teacher_dashboard' %}"
-                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if request.resolver_match.url_name == 'teacher_dashboard' %}nav-item-active{% else %}nav-item-inactive{% endif %}">
-                <i class="fas fa-chart-line w-5 text-center group-hover:scale-110 transition-transform"></i>
-                <span class="font-medium">Dashboard</span>
-            </a>
+            <button @click="currentTab = 'overview'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                :class="currentTab === 'overview' ? 'nav-item-active' : 'nav-item-inactive'">
+                <i class="fas fa-home w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Overview</span>
+            </button>
 
-            <a href="{% url 'teacher_courses' %}"
-                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if request.resolver_match.url_name == 'teacher_courses' %}nav-item-active{% else %}nav-item-inactive{% endif %}">
-                <i class="fas fa-book w-5 text-center group-hover:scale-110 transition-transform"></i>
-                <span class="font-medium">Courses</span>
-            </a>
+            <button @click="currentTab = 'materials'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                :class="currentTab === 'materials' ? 'nav-item-active' : 'nav-item-inactive'">
+                <i class="fas fa-book-reader w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Study Materials</span>
+            </button>
 
-            <a href="{% url 'teacher_exams' %}"
-                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if request.resolver_match.url_name == 'teacher_exams' %}nav-item-active{% else %}nav-item-inactive{% endif %}">
+            <button @click="currentTab = 'exams'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                :class="currentTab === 'exams' ? 'nav-item-active' : 'nav-item-inactive'">
                 <i class="fas fa-edit w-5 text-center group-hover:scale-110 transition-transform"></i>
                 <span class="font-medium">Exams</span>
-            </a>
+            </button>
 
-            <a href="{% url 'teacher_results' %}"
-                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if request.resolver_match.url_name == 'teacher_results' %}nav-item-active{% else %}nav-item-inactive{% endif %}">
-                <i class="fas fa-trophy w-5 text-center group-hover:scale-110 transition-transform"></i>
+            <button @click="currentTab = 'results'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                :class="currentTab === 'results' ? 'nav-item-active' : 'nav-item-inactive'">
+                <i class="fas fa-chart-pie w-5 text-center group-hover:scale-110 transition-transform"></i>
                 <span class="font-medium">Results</span>
-            </a>
+            </button>
         </nav>
 
         <div class="p-4 border-t border-gray-800/50 bg-black/20">
             <div class="flex items-center space-x-3 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer">
                 <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-brand-500 to-cyan-500 p-[2px]">
+                    {% if request.user.student.profile %}
+                    <img src="{{ request.user.student.profile.url }}" class="h-full w-full rounded-full object-cover">
+                    {% else %}
                     <div
                         class="h-full w-full rounded-full bg-gray-900 flex items-center justify-center font-bold text-white text-sm">
-                        {{ request.session.user_name|make_list|first }}
+                        {{ request.user.first_name|make_list|first }}
                     </div>
+                    {% endif %}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">{{ request.session.user_name }}</p>
-                    <p class="text-xs text-gray-400 truncate">Teacher</p>
+                    <p class="text-sm font-medium text-white truncate">{{ request.user.first_name }}</p>
+                    <p class="text-xs text-gray-400 truncate">Student</p>
                 </div>
                 <a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-400 transition">
                     <i class="fas fa-sign-out-alt"></i>
@@ -160,7 +166,7 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {% block teacher_content %}
+        {% block student_content %}
         {% endblock %}
     </main>
 

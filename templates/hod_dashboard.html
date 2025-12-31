@@ -1,377 +1,583 @@
-{% extends 'index.html' %}
-{% load static %}
+<!DOCTYPE html>
+<html lang="en">
 
-{% block content %}
-<div class="container-xxl py-5">
-    <div class="container">
-        <!-- Alerts -->
-        {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-        {% endif %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOD Dashboard - EduQuality AI</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        dark: {
+                            800: '#1e1e2e',
+                            900: '#11111b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-        <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
-            <h6 class="section-title bg-white text-center text-primary px-3">Dashboard</h6>
-            <h1 class="mb-5">HOD Interface</h1>
-        </div>
+    <style>
+        .glass-sidebar {
+            background: linear-gradient(180deg, rgba(30, 30, 46, 0.95) 0%, rgba(17, 17, 27, 0.98) 100%);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-        <div class="row mb-4">
-            <div class="col-12 d-flex justify-content-between align-items-center">
-                <h4>Welcome, {{ request.session.user_name }}</h4>
-                <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
-            </div>
-        </div>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
 
-        <div class="row g-4">
-            <div class="col-12">
-                <ul class="nav nav-tabs" id="hodTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="oversight-tab" data-bs-toggle="tab"
-                            data-bs-target="#oversight" type="button" role="tab">Oversight Dashboard</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="faculty-tab" data-bs-toggle="tab" data-bs-target="#faculty"
-                            type="button" role="tab">Faculty Management</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="integrity-tab" data-bs-toggle="tab" data-bs-target="#integrity"
-                            type="button" role="tab">Exam Integrity</button>
-                    </li>
-                </ul>
-                <div class="tab-content pt-4" id="hodTabsContent">
+        .nav-item-active {
+            background: rgba(14, 165, 233, 0.15);
+            color: #38bdf8;
+            border-left: 3px solid #38bdf8;
+        }
 
-                    <!-- Tab 1: Oversight Dashboard -->
-                    <div class="tab-pane fade show active" id="oversight" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <div class="card h-100 shadow-sm">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Pass/Fail Rates</h5>
-                                        <canvas id="passFailChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-4">
-                                <div class="card h-100 shadow-sm">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Subject Performance (Avg Score)</h5>
-                                        <canvas id="subjectChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="card shadow-sm">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Top Subjects Needing AI Clarification</h5>
-                                        <ul class="list-group list-group-flush" id="aiUsageList">
-                                            <!-- AI Usage items will be populated here -->
-                                            <li class="list-group-item text-muted">Loading data...</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        .nav-item-inactive {
+            color: #94a3b8;
+            border-left: 3px solid transparent;
+        }
 
-                    <!-- Tab 2: Faculty Management -->
-                    <div class="tab-pane fade" id="faculty" role="tabpanel">
-                        <div class="row">
-                            <div class="col-12 mb-5">
-                                <h5>Teacher Role Management</h5>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Department</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="teachersTableBody">
-                                            <!-- Teachers will be inserted here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <h5>Pending Study Material Reviews</h5>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Title</th>
-                                                <th>Course</th>
-                                                <th>Teacher</th>
-                                                <th>Date</th>
-                                                <th>Link</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="materialsTableBody">
-                                            <!-- Materials will be inserted here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        .nav-item-inactive:hover {
+            color: #f1f5f9;
+            background: rgba(255, 255, 255, 0.05);
+        }
 
-                    <!-- Tab 3: Exam Integrity -->
-                    <div class="tab-pane fade" id="integrity" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-4 mb-4">
-                                <div class="card h-100 shadow-sm">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Flag Distribution</h5>
-                                        <canvas id="integrityChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-8 mb-4">
-                                <div class="card h-100 shadow-sm">
-                                    <div class="card-body">
-                                        <h5 class="card-title text-danger">Recent Severe Incidents</h5>
-                                        <div class="table-responsive">
-                                            <table class="table table-sm">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Student</th>
-                                                        <th>Exam</th>
-                                                        <th>Issue</th>
-                                                        <th>Time</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="integrityTableBody">
-                                                    <!-- Integrity logs will be inserted here -->
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        body {
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
+        }
 
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 20px;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 antialiased h-screen flex overflow-hidden" x-data="{ activeTab: 'oversight' }"
+    x-init="loadOversightData()">
+
+    <!-- Sidebar -->
+    <aside class="w-72 glass-sidebar text-white flex-shrink-0 hidden md:flex flex-col transition-all duration-300 z-50">
+        <div class="h-20 flex items-center px-8 border-b border-gray-800/50">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                    <i class="fas fa-university text-white text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide">EduQuality<span class="text-purple-500">AI</span></h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">HOD Portal</p>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Load default tab data
-        loadOversightData();
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-4 mt-4">Main Menu</div>
 
-        // Event listeners for tabs to load data when clicked
-        document.getElementById('faculty-tab').addEventListener('click', loadFacultyData);
-        document.getElementById('integrity-tab').addEventListener('click', loadIntegrityData);
-        document.getElementById('oversight-tab').addEventListener('click', loadOversightData);
-    });
+            <button @click="activeTab = 'oversight'; loadOversightData()"
+                :class="activeTab === 'oversight' ? 'nav-item-active' : 'nav-item-inactive'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group text-left">
+                <i class="fas fa-chart-pie w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Oversight</span>
+            </button>
 
-    // --- Oversignt Tab ---
-    function loadOversightData() {
-        fetch('/quality/api/hod/oversight/') // Note: Adjust URL path if needed. Assuming /api/ is under quality_app urls which is usually stripped or preserved. Let's check urls.py. API path is 'api/hod/...'
-        // Actually, looks like urls.py has path('api/hod/oversight/', api.get_oversight_analytics) inside quality_app.
-        // And main urls.py includes quality_app.urls at root path ''.
-        // So URL is /api/hod/oversight/
-        fetch('/api/hod/oversight/')
-            .then(response => response.json())
-            .then(data => {
-                renderPassFailChart(data.pass_fail_rate);
-                renderSubjectChart(data.subject_performance);
-                renderAIUsage(data.ai_clarification_top_subjects);
-            })
-            .catch(error => console.error('Error loading oversight data:', error));
-    }
+            <button @click="activeTab = 'faculty'; loadFacultyData()"
+                :class="activeTab === 'faculty' ? 'nav-item-active' : 'nav-item-inactive'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group text-left">
+                <i class="fas fa-chalkboard-teacher w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Faculty Management</span>
+            </button>
 
-    let pfChart = null;
-    function renderPassFailChart(rates) {
-        const ctx = document.getElementById('passFailChart').getContext('2d');
-        if (pfChart) pfChart.destroy();
-        pfChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Pass', 'Fail'],
-                datasets: [{
-                    data: [rates.pass, rates.fail],
-                    backgroundColor: ['#198754', '#dc3545']
-                }]
+            <button @click="activeTab = 'integrity'; loadIntegrityData()"
+                :class="activeTab === 'integrity' ? 'nav-item-active' : 'nav-item-inactive'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group text-left">
+                <i class="fas fa-shield-alt w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Exam Integrity</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800/50 bg-black/20">
+            <div class="flex items-center space-x-3 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer">
+                <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 p-[2px]">
+                    <div
+                        class="h-full w-full rounded-full bg-gray-900 flex items-center justify-center font-bold text-white text-sm">
+                        {{ request.session.user_name|make_list|first }}
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white truncate">{{ request.session.user_name }}</p>
+                    <p class="text-xs text-gray-400 truncate">HOD</p>
+                </div>
+                <a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-400 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <!-- Top Glass Header -->
+        <header
+            class="h-20 glass-card m-6 rounded-2xl flex items-center justify-between px-8 z-40 sticky top-0 shrink-0">
+            <div>
+                <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-gray-600">
+                    <span
+                        x-text="activeTab === 'oversight' ? 'Oversight Dashboard' : (activeTab === 'faculty' ? 'Faculty Management' : 'Exam Integrity')"></span>
+                </h2>
+                <p class="text-sm text-gray-500 font-medium">Departmental Overview</p>
+            </div>
+
+            <div class="flex items-center space-x-6">
+                <!-- Notifications similar to admin/principal -->
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open"
+                        class="relative p-2 text-gray-500 hover:text-brand-600 transition focus:outline-none">
+                        <i class="fas fa-bell text-xl"></i>
+                        {% if messages %}
+                        <span
+                            class="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white animate-pulse"></span>
+                        {% endif %}
+                    </button>
+                    <div x-show="open" @click.away="open = false" x-transition
+                        class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <div class="px-4 py-3 border-b border-gray-50">
+                            <h3 class="font-semibold text-gray-800 text-sm">Notifications</h3>
+                        </div>
+                        <div class="max-h-80 overflow-y-auto custom-scrollbar">
+                            {% if messages %}
+                            {% for message in messages %}
+                            <div class="px-4 py-3 border-b border-gray-50">
+                                <p class="text-sm text-gray-600">{{ message }}</p>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="px-4 py-8 text-center">
+                                <p class="text-sm text-gray-500">No new notifications</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Scroll Area -->
+        <div class="flex-1 overflow-x-hidden overflow-y-auto px-6 pb-6 custom-scrollbar">
+
+            <!-- ALERTS -->
+            {% if messages %}
+            <div class="mb-8 space-y-3">
+                {% for message in messages %}
+                <div class="p-4 rounded-xl shadow-sm border border-l-4 flex items-center gap-3
+                    {% if message.tags == 'error' %}bg-red-50 border-red-100 border-l-red-500 text-red-700
+                    {% else %}bg-green-50 border-green-100 border-l-green-500 text-green-700{% endif %}">
+                    <i
+                        class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- TAB 1: OVERSIGHT -->
+            <div x-show="activeTab === 'oversight'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Pass/Fail Chart -->
+                    <div class="glass-card p-6 rounded-2xl">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Pass vs Fail Rates</h3>
+                        <div class="h-64 relative">
+                            <canvas id="passFailChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Subject Performance -->
+                    <div class="glass-card p-6 rounded-2xl">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Subject Performance (Avg Score)</h3>
+                        <div class="h-64 relative">
+                            <canvas id="subjectChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- AI Usage List -->
+                    <div class="glass-card p-6 rounded-2xl md:col-span-2">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Top Subjects Needing AI Clarification</h3>
+                        <ul class="divide-y divide-gray-100" id="aiUsageList">
+                            <li class="py-4 text-center text-gray-500 italic">Loading data...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: FACULTY MANAGEMENT -->
+            <div x-show="activeTab === 'faculty'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" style="display: none;">
+                <div class="space-y-8">
+                    <!-- Teacher Roles -->
+                    <div class="glass-card p-0 rounded-2xl overflow-hidden">
+                        <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                            <h3 class="font-bold text-gray-800">Teacher Role Management</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-600">
+                                <thead
+                                    class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-6 py-4">Name</th>
+                                        <th class="px-6 py-4">Department</th>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100" id="teachersTableBody">
+                                    <!-- Dynamic Content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pending Materials -->
+                    <div class="glass-card p-0 rounded-2xl overflow-hidden">
+                        <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                            <h3 class="font-bold text-gray-800">Pending Study Material Reviews</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-600">
+                                <thead
+                                    class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-6 py-4">Title</th>
+                                        <th class="px-6 py-4">Course</th>
+                                        <th class="px-6 py-4">Teacher</th>
+                                        <th class="px-6 py-4">Date</th>
+                                        <th class="px-6 py-4">Link</th>
+                                        <th class="px-6 py-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100" id="materialsTableBody">
+                                    <!-- Dynamic Content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: EXAM INTEGRITY -->
+            <div x-show="activeTab === 'integrity'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" style="display: none;">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Chart -->
+                    <div class="glass-card p-6 rounded-2xl">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Flag Distribution</h3>
+                        <div class="h-64 relative">
+                            <canvas id="integrityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Logs -->
+                    <div class="glass-card p-0 rounded-2xl md:col-span-2 overflow-hidden">
+                        <div class="px-6 py-5 border-b border-gray-100 bg-red-50/30">
+                            <h3 class="font-bold text-red-600">Recent Severe Incidents</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-600">
+                                <thead
+                                    class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-6 py-4">Student</th>
+                                        <th class="px-6 py-4">Exam</th>
+                                        <th class="px-6 py-4">Issue</th>
+                                        <th class="px-6 py-4">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100" id="integrityTableBody">
+                                    <!-- Dynamic Content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- Oversight Data Checking & Rendering ---
+        function loadOversightData() {
+            fetch('/api/hod/oversight/')
+                .then(response => response.json())
+                .then(data => {
+                    renderPassFailChart(data.pass_fail_rate);
+                    renderSubjectChart(data.subject_performance);
+                    renderAIUsage(data.ai_clarification_top_subjects);
+                })
+                .catch(error => console.error('Error loading oversight data:', error));
+        }
+
+        let pfChart = null;
+        function renderPassFailChart(rates) {
+            const ctx = document.getElementById('passFailChart').getContext('2d');
+            if (pfChart) pfChart.destroy();
+            pfChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pass', 'Fail'],
+                    datasets: [{
+                        data: [rates.pass, rates.fail],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Outfit' }, usePointStyle: true } }
+                    }
+                }
+            });
+        }
+
+        let subChart = null;
+        function renderSubjectChart(subjects) {
+            const ctx = document.getElementById('subjectChart').getContext('2d');
+            const labels = subjects.map(s => s.name);
+            const data = subjects.map(s => s.avg_score);
+
+            if (subChart) subChart.destroy();
+            subChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Avg Score',
+                        data: data,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderAIUsage(list) {
+            const ul = document.getElementById('aiUsageList');
+            ul.innerHTML = '';
+            if (list.length === 0) {
+                ul.innerHTML = '<li class="py-4 text-center text-gray-500">No data available</li>';
+                return;
             }
-        });
-    }
-
-    let subChart = null;
-    function renderSubjectChart(subjects) {
-        const ctx = document.getElementById('subjectChart').getContext('2d');
-        const labels = subjects.map(s => s.name);
-        const data = subjects.map(s => s.avg_score);
-
-        if (subChart) subChart.destroy();
-        subChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Avg Score',
-                    data: data,
-                    backgroundColor: '#0d6efd'
-                }]
-            },
-            options: { scales: { y: { beginAtZero: true, max: 100 } } }
-        });
-    }
-
-    function renderAIUsage(list) {
-        const ul = document.getElementById('aiUsageList');
-        ul.innerHTML = '';
-        if (list.length === 0) {
-            ul.innerHTML = '<li class="list-group-item">No data available</li>';
-            return;
+            list.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'py-3 flex justify-between items-center hover:bg-gray-50 px-4 transition rounded-lg';
+                li.innerHTML = `
+                    <span class="font-medium text-gray-700">${item.course__name}</span>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        ${item.query_count} queries
+                    </span>`;
+                ul.appendChild(li);
+            });
         }
-        list.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `${item.course__name} <span class="badge bg-primary rounded-pill">${item.query_count} queries</span>`;
-            ul.appendChild(li);
-        });
-    }
 
 
-    // --- Faculty Management Tab ---
-    function loadFacultyData() {
-        fetch('/api/hod/faculty-management/')
-            .then(response => response.json())
-            .then(data => {
-                renderTeachersTable(data.teachers);
-                renderMaterialsTable(data.pending_materials);
-            })
-            .catch(error => console.error('Error loading faculty data:', error));
-    }
-
-    function renderTeachersTable(teachers) {
-        const tbody = document.getElementById('teachersTableBody');
-        tbody.innerHTML = '';
-        teachers.forEach(t => {
-            const tr = document.createElement('tr');
-            const statusBadge = t.status ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
-            const actionBtn = t.status
-                ? `<button class="btn btn-sm btn-outline-danger" onclick="updateTeacherRole(${t.id}, 'deactivate')">Deactivate</button>`
-                : `<button class="btn btn-sm btn-outline-success" onclick="updateTeacherRole(${t.id}, 'approve')">Approve</button>`;
-
-            tr.innerHTML = `
-                <td>${t.first_name} ${t.last_name}</td>
-                <td>${t.department}</td>
-                <td>${statusBadge}</td>
-                <td>${actionBtn}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    function renderMaterialsTable(materials) {
-        const tbody = document.getElementById('materialsTableBody');
-        tbody.innerHTML = '';
-        if (materials.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No pending materials</td></tr>';
-            return;
+        // --- Faculty Data ---
+        function loadFacultyData() {
+            fetch('/api/hod/faculty-management/')
+                .then(response => response.json())
+                .then(data => {
+                    renderTeachersTable(data.teachers);
+                    renderMaterialsTable(data.pending_materials);
+                })
+                .catch(error => console.error('Error loading faculty data:', error));
         }
-        materials.forEach(m => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${m.title}</td>
-                <td>${m.course__name}</td>
-                <td>${m.teacher__first_name} ${m.teacher__last_name}</td>
-                <td>${new Date(m.uploaded_at).toLocaleDateString()}</td>
-                <td><a href="#" class="text-primary">View File</a></td> <!-- Placeholder link -->
-                <td>
-                    <button class="btn btn-sm btn-success me-1" onclick="reviewMaterial(${m.id}, 'approve')"><i class="fa fa-check"></i></button>
-                    <button class="btn btn-sm btn-danger" onclick="reviewMaterial(${m.id}, 'reject')"><i class="fa fa-times"></i></button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
 
-    window.updateTeacherRole = function (id, action) {
-        fetch('/api/hod/faculty-management/role/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ teacher_id: id, action: action })
-        }).then(res => {
-            if (res.ok) loadFacultyData(); // Reload table
-            else alert('Failed to update role');
-        });
-    }
+        function renderTeachersTable(teachers) {
+            const tbody = document.getElementById('teachersTableBody');
+            tbody.innerHTML = '';
+            teachers.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-brand-50/30 transition duration-150";
 
-    window.reviewMaterial = function (id, action) {
-        fetch('/api/hod/faculty-management/material/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ material_id: id, action: action })
-        }).then(res => {
-            if (res.ok) loadFacultyData(); // Reload table
-            else alert('Failed to review material');
-        });
-    }
+                const statusBadge = t.status
+                    ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Active</span>'
+                    : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Inactive</span>';
 
+                const actionBtn = t.status
+                    ? `<button class="text-xs px-3 py-1 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition" onclick="updateTeacherRole(${t.id}, 'deactivate')">Deactivate</button>`
+                    : `<button class="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-sm" onclick="updateTeacherRole(${t.id}, 'approve')">Approve</button>`;
 
-    // --- Exam Integrity Tab ---
-    function loadIntegrityData() {
-        fetch('/api/hod/exam-integrity/')
-            .then(response => response.json())
-            .then(data => {
-                renderIntegrityChart(data.flag_distribution);
-                renderIntegrityLogs(data.recent_severe_incidents);
-            })
-            .catch(error => console.error('Error loading integrity data:', error));
-    }
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${t.first_name} ${t.last_name}</td>
+                    <td class="px-6 py-4 text-gray-500">${t.department}</td>
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 text-right">${actionBtn}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
-    let intChart = null;
-    function renderIntegrityChart(dist) {
-        const ctx = document.getElementById('integrityChart').getContext('2d');
-        if (intChart) intChart.destroy();
-
-        const labels = dist.map(d => d.flag_type);
-        const counts = dist.map(d => d.count);
-
-        intChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: counts,
-                    backgroundColor: ['#ffc107', '#dc3545', '#fd7e14', '#6c757d']
-                }]
+        function renderMaterialsTable(materials) {
+            const tbody = document.getElementById('materialsTableBody');
+            tbody.innerHTML = '';
+            if (materials.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No pending materials</td></tr>';
+                return;
             }
-        });
-    }
-
-    function renderIntegrityLogs(logs) {
-        const tbody = document.getElementById('integrityTableBody');
-        tbody.innerHTML = '';
-        if (logs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center">No severe incidents reported</td></tr>';
-            return;
+            materials.forEach(m => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-brand-50/30 transition duration-150";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${m.title}</td>
+                    <td class="px-6 py-4 text-gray-500">${m.course__name}</td>
+                    <td class="px-6 py-4 text-gray-500">${m.teacher__first_name} ${m.teacher__last_name}</td>
+                    <td class="px-6 py-4 text-gray-400 text-xs">${new Date(m.uploaded_at).toLocaleDateString()}</td>
+                    <td class="px-6 py-4"><a href="#" class="text-brand-600 hover:underline text-xs">View File</a></td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <button class="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition" onclick="reviewMaterial(${m.id}, 'approve')" title="Approve"><i class="fa fa-check"></i></button>
+                            <button class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" onclick="reviewMaterial(${m.id}, 'reject')" title="Reject"><i class="fa fa-times"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
-        logs.forEach(l => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${l.student__first_name} ${l.student__last_name}</td>
-                <td>${l.exam__title}</td>
-                <td class="text-danger fw-bold">${l.flag_type}</td>
-                <td>${new Date(l.timestamp).toLocaleString()}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
 
-</script>
-{% endblock %}
+        window.updateTeacherRole = function (id, action) {
+            fetch('/api/hod/faculty-management/role/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, // Added CSRF
+                body: JSON.stringify({ teacher_id: id, action: action })
+            }).then(res => {
+                if (res.ok) loadFacultyData();
+                else alert('Failed to update role');
+            });
+        }
+
+        window.reviewMaterial = function (id, action) {
+            fetch('/api/hod/faculty-management/material/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, // Added CSRF
+                body: JSON.stringify({ material_id: id, action: action })
+            }).then(res => {
+                if (res.ok) loadFacultyData();
+                else alert('Failed to review material');
+            });
+        }
+
+
+        // --- Integrity Data ---
+        function loadIntegrityData() {
+            fetch('/api/hod/exam-integrity/')
+                .then(response => response.json())
+                .then(data => {
+                    renderIntegrityChart(data.flag_distribution);
+                    renderIntegrityLogs(data.recent_severe_incidents);
+                })
+                .catch(error => console.error('Error loading integrity data:', error));
+        }
+
+        let intChart = null;
+        function renderIntegrityChart(dist) {
+            const ctx = document.getElementById('integrityChart').getContext('2d');
+            if (intChart) intChart.destroy();
+
+            const labels = dist.map(d => d.flag_type);
+            const counts = dist.map(d => d.count);
+
+            intChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: ['#fbbf24', '#ef4444', '#f97316', '#9ca3af'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Outfit' }, usePointStyle: true } }
+                    }
+                }
+            });
+        }
+
+        function renderIntegrityLogs(logs) {
+            const tbody = document.getElementById('integrityTableBody');
+            tbody.innerHTML = '';
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400">No severe incidents reported</td></tr>';
+                return;
+            }
+            logs.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-red-50/20 transition";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${l.student__first_name} ${l.student__last_name}</td>
+                    <td class="px-6 py-4 text-gray-500">${l.exam__title}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">${l.flag_type}</span></td>
+                    <td class="px-6 py-4 text-xs text-gray-400">${new Date(l.timestamp).toLocaleString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+    </script>
+</body>
+
+</html>

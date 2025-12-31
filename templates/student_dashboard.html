@@ -1,322 +1,340 @@
-{% extends 'index.html' %}
-{% load static %}
+{% extends 'student_base.html' %}
 
-{% block content %}
-<style>
-    /* Dashboard specific styles */
-    .dashboard-container {
-        padding: 40px 0;
-        background-color: #f8f9fa;
-        min-height: 80vh;
-    }
+{% block student_content %}
+<!-- Top Glass Header -->
+<header class="h-20 glass-card m-6 rounded-2xl flex items-center justify-between px-8 z-40 sticky top-0 shrink-0">
+    <div>
+        <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-gray-600"
+            x-text="currentTab === 'overview' ? 'Dashboard Overview' : (currentTab === 'materials' ? 'Study Materials' : (currentTab === 'exams' ? 'Exams & Assessments' : 'Results & Analytics'))">
+            Dashboard Overview
+        </h2>
+        <p class="text-sm text-gray-500 font-medium">Welcome back, {{ student.first_name }}</p>
+    </div>
 
-    .student-card {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        padding: 20px;
-        margin-bottom: 20px;
-        transition: transform 0.2s;
-    }
-
-    .student-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .profile-header {
-        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
-        color: white;
-        padding: 30px;
-        border-radius: 15px;
-        margin-bottom: 30px;
-    }
-
-    .nav-pills .nav-link.active {
-        background-color: #0d6efd;
-    }
-
-    .exam-status-scheduled {
-        color: #ffc107;
-        font-weight: bold;
-    }
-
-    .exam-status-completed {
-        color: #198754;
-        font-weight: bold;
-    }
-
-    .resource-icon {
-        font-size: 24px;
-        color: #0d6efd;
-        margin-right: 10px;
-    }
-
-    /* AI Chat Widget */
-    .ai-widget {
-        border: 1px solid #dee2e6;
-        border-radius: 10px;
-        height: 400px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .chat-history {
-        flex-grow: 1;
-        padding: 15px;
-        overflow-y: auto;
-        background: #f8f9fa;
-    }
-
-    .chat-input-area {
-        padding: 15px;
-        background: white;
-        border-top: 1px solid #dee2e6;
-        border-bottom-left-radius: 10px;
-        border-bottom-right-radius: 10px;
-    }
-
-    .message {
-        margin-bottom: 15px;
-        padding: 10px;
-        border-radius: 8px;
-        max-width: 80%;
-    }
-
-    .message.user {
-        background-color: #0d6efd;
-        color: white;
-        align-self: flex-end;
-        margin-left: auto;
-    }
-
-    .message.ai {
-        background-color: #e9ecef;
-        color: #212529;
-        align-self: flex-start;
-    }
-</style>
-
-<div class="dashboard-container">
-    <div class="container">
-        <!-- Alerts -->
-        {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-        {% endif %}
-
-        <!-- Profile Header -->
-        <div class="profile-header">
-            <div class="row align-items-center">
-                <div class="col-md-2 text-center">
-                    {% if student.profile %}
-                    <img src="{{ student.profile.url }}" alt="Profile" class="rounded-circle img-thumbnail"
-                        style="width: 100px; height: 100px; object-fit: cover;">
-                    {% else %}
-                    <div class="rounded-circle img-thumbnail d-flex align-items-center justify-content-center bg-light text-primary mx-auto"
-                        style="width: 100px; height: 100px;">
-                        <i class="bi bi-person-fill" style="font-size: 3rem;"></i>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="col-md-7">
-                    <h2>Welcome back, {{ student.first_name }}!</h2>
-                    <p class="mb-0">{{ student.registration_no }} | Department: {{ student.department }}</p>
-                </div>
-                <div class="col-md-3 text-end">
-                    <div class="card bg-white text-dark p-2">
-                        <div class="small text-muted">Upcoming Exams</div>
-                        <div class="h3 mb-0">{{ upcoming_exams|length }}</div>
-                    </div>
-                </div>
+    <!-- Notifications -->
+    <div class="relative" x-data="{ open: false }">
+        <button @click="open = !open"
+            class="relative p-2 text-gray-500 hover:text-brand-600 transition focus:outline-none">
+            <i class="fas fa-bell text-xl"></i>
+            {% if messages %}
+            <span
+                class="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white animate-pulse"></span>
+            {% endif %}
+        </button>
+        <div x-show="open" @click.away="open = false" x-transition
+            class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
+            style="display: none;">
+            <div class="px-4 py-3 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-semibold text-gray-800 text-sm">Notifications</h3>
             </div>
-        </div>
-
-        <!-- Dashboard Tabs -->
-        <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="pills-materials-tab" data-bs-toggle="pill"
-                    data-bs-target="#pills-materials" type="button" role="tab">Learning Resources</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pills-exams-tab" data-bs-toggle="pill" data-bs-target="#pills-exams"
-                    type="button" role="tab">Assessments & Exams</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="pills-results-tab" data-bs-toggle="pill" data-bs-target="#pills-results"
-                    type="button" role="tab">Results & Analytics</button>
-            </li>
-        </ul>
-
-        <div class="tab-content" id="pills-tabContent">
-
-            <!-- Learning Materials & AI Section -->
-            <div class="tab-pane fade show active" id="pills-materials" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-7">
-                        <div class="student-card">
-                            <h4 class="mb-4">My Study Materials</h4>
-                            {% if materials %}
-                            <div class="list-group">
-                                {% for material in materials %}
-                                {% if material.file %}
-                                <a href="{{ material.file.url }}"
-                                    class="list-group-item list-group-item-action d-flex align-items-center"
-                                    target="_blank" download>
-                                    <div class="resource-icon">
-                                        <i class="bi bi-file-earmark-pdf"></i>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-0">{{ material.title }}</h6>
-                                        <small class="text-muted">{{ material.course.name }} • Uploaded by {{
-                                            material.teacher.first_name }}</small>
-                                    </div>
-                                    <span class="badge bg-light text-dark"><i class="bi bi-download"></i>
-                                        Download</span>
-                                </a>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                            {% else %}
-                            <div class="alert alert-info">No study materials available yet.</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="student-card">
-                            <h4 class="mb-3">AI Clarification Portal</h4>
-                            <p class="small text-muted">Ask the AI to explain complex topics from your courses.</p>
-                            <div class="ai-widget">
-                                <div class="chat-history" id="chatHistory">
-                                    <div class="message ai">Hello! I'm your AI learning assistant. Ask me anything about
-                                        your course topics.</div>
-                                </div>
-                                <div class="chat-input-area d-flex">
-                                    <select class="form-select me-2" id="courseSelect" style="width: 30%;">
-                                        <option value="">General</option>
-                                        {% for course in courses %}
-                                        <option value="{{ course.id }}">{{ course.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <input type="text" id="aiQueryInput" class="form-control me-2"
-                                        placeholder="Ask a question..." onkeypress="handleKeyPress(event)">
-                                    <button class="btn btn-primary" onclick="sendAiQuery()"><i
-                                            class="bi bi-send"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="max-h-80 overflow-y-auto custom-scrollbar p-0">
+                {% if messages %}
+                {% for message in messages %}
+                <div class="px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
+                    <p class="text-sm text-gray-600">{{ message }}</p>
                 </div>
-            </div>
-
-            <!-- Exams Section -->
-            <div class="tab-pane fade" id="pills-exams" role="tabpanel">
-                <div class="student-card">
-                    <h4 class="mb-4">Upcoming Examinations</h4>
-                    {% if upcoming_exams %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Exam Title</th>
-                                    <th>Course</th>
-                                    <th>Date & Time</th>
-                                    <th>Duration</th>
-                                    <th>Format</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for exam in upcoming_exams %}
-                                <tr>
-                                    <td>{{ exam.title }}</td>
-                                    <td>{{ exam.course.name }}</td>
-                                    <td>{{ exam.date|date:"M d, Y H:i" }}</td>
-                                    <td>{{ exam.duration }} mins</td>
-                                    <td><span class="badge bg-secondary">{{ exam.exam_type }}</span></td>
-                                    <td>
-                                        <!-- Logic to check if exam is strictly active can be added here -->
-                                        <a href="{% url 'exam_interface' exam.id %}" class="btn btn-primary btn-sm">
-                                            <i class="bi bi-pencil-square"></i> Take Exam
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p class="text-muted text-center py-4">No exams scheduled at the moment.</p>
-                    {% endif %}
+                {% endfor %}
+                {% else %}
+                <div class="px-4 py-8 text-center">
+                    <p class="text-sm text-gray-500">No new notifications</p>
                 </div>
+                {% endif %}
             </div>
-
-            <!-- Results Section -->
-            <div class="tab-pane fade" id="pills-results" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="student-card">
-                            <h4 class="mb-4">Recent Results</h4>
-                            {% if recent_results %}
-                            <div class="table-responsive">
-                                <table class="table align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Exam</th>
-                                            <th>Date Taken</th>
-                                            <th>Score</th>
-                                            <th>Status</th>
-                                            <th>AI Feedback</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for result in recent_results %}
-                                        <tr>
-                                            <td>
-                                                <div class="fw-bold">{{ result.exam.title }}</div>
-                                                <div class="small text-muted">{{ result.exam.course.name }}</div>
-                                            </td>
-                                            <td>{{ result.created_at|date:"M d, Y" }}</td>
-                                            <td>
-                                                <span
-                                                    class="h5 mb-0 {% if result.is_pass %}text-success{% else %}text-danger{% endif %}">
-                                                    {{ result.score }}%
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {% if result.is_pass %}
-                                                <span class="badge bg-success">Passed</span>
-                                                {% else %}
-                                                <span class="badge bg-danger">Failed</span>
-                                                {% endif %}
-                                            </td>
-                                            <td style="width: 40%;">
-                                                <small class="text-muted d-block text-truncate"
-                                                    style="max-width: 300px;" title="{{ result.ai_feedback }}">
-                                                    {{ result.ai_feedback|default:"No feedback available" }}
-                                                </small>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% else %}
-                            <p class="text-muted text-center py-4">No results available yet.</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
+</header>
+
+<!-- Content Scroll Area -->
+<div class="flex-1 overflow-x-hidden overflow-y-auto px-6 pb-6 custom-scrollbar">
+
+    <!-- Overview Tab -->
+    <div x-show="currentTab === 'overview'" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100">
+
+        <!-- Welcome Banner -->
+        <div
+            class="glass-card p-8 rounded-2xl mb-8 relative overflow-hidden bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-2xl shadow-brand-500/30">
+            <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+            <div class="relative z-10 flex items-center gap-6">
+                <div
+                    class="h-20 w-20 rounded-full border-4 border-white/30 overflow-hidden shadow-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    {% if student.profile %}
+                    <img src="{{ student.profile.url }}" alt="Profile" class="h-full w-full object-cover">
+                    {% else %}
+                    <i class="fas fa-user-graduate text-3xl"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold mb-1">Hello, {{ student.first_name }}!</h1>
+                    <p class="text-blue-100 text-sm font-medium tracking-wide opacity-90">ID: {{ student.registration_no
+                        }} | Department: {{ student.department }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Stats / Quick Info -->
+            <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Upcoming Exams Card -->
+                <div class="glass-card p-6 rounded-2xl hover:-translate-y-1 transition-transform cursor-pointer"
+                    @click="currentTab = 'exams'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div
+                            class="h-12 w-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Updates</span>
+                    </div>
+                    <h3 class="text-3xl font-bold text-gray-800">{{ upcoming_exams|length }}</h3>
+                    <p class="text-sm text-gray-500 font-medium">Upcoming Exams</p>
+                </div>
+
+                <!-- Recent Results Card -->
+                <div class="glass-card p-6 rounded-2xl hover:-translate-y-1 transition-transform cursor-pointer"
+                    @click="currentTab = 'results'">
+                    <div class="flex items-center justify-between mb-4">
+                        <div
+                            class="h-12 w-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center text-xl">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Performance</span>
+                    </div>
+                    <h3 class="text-3xl font-bold text-gray-800">{{ recent_results|length }}</h3>
+                    <p class="text-sm text-gray-500 font-medium">Completed Exams</p>
+                </div>
+            </div>
+
+            <!-- AI Chat Widget Mini -->
+            <div class="lg:col-span-1 glass-card p-6 rounded-2xl flex flex-col h-[400px]">
+                <div class="flex items-center gap-3 mb-4 border-b border-gray-100 pb-3">
+                    <div
+                        class="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                        <i class="fas fa-robot text-white text-xs"></i>
+                    </div>
+                    <span class="font-bold text-gray-800">AI Tutor</span>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 mb-4 pr-2" id="chatHistory">
+                    <div class="flex gap-3">
+                        <div class="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                            <i class="fas fa-robot text-purple-600 text-xs"></i>
+                        </div>
+                        <div
+                            class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-2 text-sm text-gray-700 max-w-[85%]">
+                            Hi {{ student.first_name }}! I'm your AI tutor. Ask me anything about your courses.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-3 border-t border-gray-100">
+                    <div class="flex gap-2">
+                        <select id="courseSelect"
+                            class="w-1/3 rounded-lg border-gray-200 text-xs focus:ring-purple-500 focus:border-purple-500">
+                            <option value="">General</option>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}">{{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" id="aiQueryInput" placeholder="Ask a question..."
+                            class="flex-1 rounded-lg border-gray-200 text-sm focus:ring-purple-500 focus:border-purple-500"
+                            onkeypress="handleKeyPress(event)">
+                        <button onclick="sendAiQuery()"
+                            class="h-9 w-9 rounded-lg bg-purple-600 text-white hover:bg-purple-700 flex items-center justify-center transition shadow-lg shadow-purple-500/30">
+                            <i class="fas fa-paper-plane text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Study Materials Tab -->
+    <div x-show="currentTab === 'materials'" style="display: none;"
+        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="glass-card p-0 rounded-2xl overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">Available Resources</h3>
+            </div>
+            {% if materials %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                {% for material in materials %}
+                {% if material.file %}
+                <div
+                    class="group relative bg-white border border-gray-100 rounded-xl p-5 hover:shadow-lg transition-all duration-300 hover:border-brand-200">
+                    <div class="flex items-start justify-between mb-4">
+                        <div
+                            class="h-10 w-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
+                            <i class="fas fa-file-pdf text-lg"></i>
+                        </div>
+                        <span class="px-2 py-1 bg-gray-100 rounded text-[10px] font-semibold text-gray-500">{{
+                            material.course.department }}</span>
+                    </div>
+                    <h4 class="font-bold text-gray-800 mb-1 line-clamp-1" title="{{ material.title }}">{{ material.title
+                        }}</h4>
+                    <p class="text-xs text-gray-500 mb-4">{{ material.course.name }}</p>
+
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-50">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                                {{ material.teacher.first_name|first }}
+                            </div>
+                            <span class="text-xs text-gray-400">{{ material.teacher.first_name }}</span>
+                        </div>
+                        <a href="{{ material.file.url }}" target="_blank" download
+                            class="text-brand-600 hover:text-brand-700 text-sm font-medium flex items-center gap-1 group-hover:underline">
+                            Download <i class="fas fa-download text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-12 text-center text-gray-400">
+                <i class="fas fa-folder-open text-4xl mb-3"></i>
+                <p>No study materials available yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Exams Tab -->
+    <div x-show="currentTab === 'exams'" style="display: none;" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="glass-card p-0 rounded-2xl overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">Upcoming Assessments</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead
+                        class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                        <tr>
+                            <th class="px-6 py-4">Exam Title</th>
+                            <th class="px-6 py-4">Course</th>
+                            <th class="px-6 py-4">Date & Time</th>
+                            <th class="px-6 py-4">Format</th>
+                            <th class="px-6 py-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for exam in upcoming_exams %}
+                        <tr class="hover:bg-brand-50/30 transition duration-150">
+                            <td class="px-6 py-4 font-semibold text-gray-900">{{ exam.title }}</td>
+                            <td class="px-6 py-4">{{ exam.course.name }}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-calendar-day text-brand-400"></i>
+                                    {{ exam.date|date:"M d, Y H:i" }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                    {{ exam.exam_type }}
+                                </span>
+                                <span class="text-xs text-gray-400 ml-2">{{ exam.duration }} mins</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <a href="{% url 'exam_interface' exam.id %}"
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold shadow-lg shadow-brand-500/30 hover:bg-brand-700 transition transform hover:-translate-y-0.5">
+                                    <i class="fas fa-pencil-alt"></i> Take Exam
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                <div class="flex flex-col items-center gap-2">
+                                    <i class="fas fa-check-circle text-3xl mb-2 text-green-100 text-green-400"></i>
+                                    <p>No exams scheduled at the moment. Great job!</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Tab -->
+    <div x-show="currentTab === 'results'" style="display: none;" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100">
+        <div class="glass-card p-0 rounded-2xl overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">Performance History</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead
+                        class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                        <tr>
+                            <th class="px-6 py-4">Exam</th>
+                            <th class="px-6 py-4">Date Taken</th>
+                            <th class="px-6 py-4">Score</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4">AI Feedback</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for result in recent_results %}
+                        <tr class="hover:bg-brand-50/30 transition duration-150">
+                            <td class="px-6 py-4">
+                                <p class="font-semibold text-gray-900">{{ result.exam.title }}</p>
+                                <p class="text-xs text-gray-500">{{ result.exam.course.name }}</p>
+                            </td>
+                            <td class="px-6 py-4 text-gray-500">{{ result.created_at|date:"M d, Y" }}</td>
+                            <td class="px-6 py-4">
+                                <span
+                                    class="text-lg font-bold {% if result.is_pass %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {{ result.score }}%
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if result.is_pass %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                    Passed
+                                </span>
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                    Failed
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 max-w-xs">
+                                <p class="text-xs text-gray-500 line-clamp-2" title="{{ result.ai_feedback }}">
+                                    {{ result.ai_feedback|default:"No feedback available" }}
+                                </p>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                <div class="flex flex-col items-center gap-2">
+                                    <i class="fas fa-chart-bar text-3xl mb-2"></i>
+                                    <p>No results available yet.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div>
 
+<!-- AI Chat Script -->
 <script>
     async function sendAiQuery() {
         const input = document.getElementById('aiQueryInput');
@@ -327,10 +345,17 @@
         if (!query) return;
 
         // Add user message
-        const userMsg = document.createElement('div');
-        userMsg.className = 'message user';
-        userMsg.innerText = query;
-        history.appendChild(userMsg);
+        const userMsgWrapper = document.createElement('div');
+        userMsgWrapper.className = 'flex gap-3 flex-row-reverse';
+        userMsgWrapper.innerHTML = `
+            <div class="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
+                <i class="fas fa-user text-brand-600 text-xs"></i>
+            </div>
+            <div class="bg-brand-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-sm max-w-[85%]">
+                ${query}
+            </div>
+        `;
+        history.appendChild(userMsgWrapper);
 
         // Clear input
         input.value = '';
@@ -341,24 +366,38 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // CSRF handled by @csrf_exempt for this demo, or use cookie
+                    // CSRF handled by @csrf_exempt for this demo
                 },
                 body: JSON.stringify({ query: query, course_id: courseId })
             });
 
             if (response.ok) {
                 const data = await response.json();
-                const aiMsg = document.createElement('div');
-                aiMsg.className = 'message ai';
-                aiMsg.innerText = data.response;
-                history.appendChild(aiMsg);
+                const aiMsgWrapper = document.createElement('div');
+                aiMsgWrapper.className = 'flex gap-3';
+                aiMsgWrapper.innerHTML = `
+                    <div class="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                        <i class="fas fa-robot text-purple-600 text-xs"></i>
+                    </div>
+                    <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-2 text-sm text-gray-700 max-w-[85%]">
+                        ${data.response}
+                    </div>
+                `;
+                history.appendChild(aiMsgWrapper);
             } else {
                 throw new Error('Failed to get response');
             }
         } catch (error) {
             const errorMsg = document.createElement('div');
-            errorMsg.className = 'message ai text-danger';
-            errorMsg.innerText = "Sorry, I couldn't reach the AI service right now.";
+            errorMsg.className = 'flex gap-3';
+            errorMsg.innerHTML = `
+                <div class="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                     <i class="fas fa-exclamation-triangle text-red-600 text-xs"></i>
+                </div>
+                <div class="bg-red-50 text-red-600 rounded-2xl rounded-tl-none px-4 py-2 text-sm max-w-[85%]">
+                    Sorry, I couldn't reach the AI service right now.
+                </div>
+            `;
             history.appendChild(errorMsg);
         }
 
