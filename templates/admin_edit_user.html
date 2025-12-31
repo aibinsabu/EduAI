@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit User - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 text-gray-800 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-white flex-shrink-0 hidden md:flex flex-col">
+            <div class="p-6 border-b border-gray-700">
+                <span class="text-xl font-bold tracking-tight">EduQuality AI</span>
+                <p class="text-xs text-gray-400 mt-1">SuperAdmin Console</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="{% url 'admin_dashboard' %}"
+                    class="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                    <i class="fas fa-tachometer-alt w-5"></i>
+                    <span>Overview</span>
+                </a>
+                <div x-data="{ open: true }" class="space-y-1">
+                    <button @click="open = !open"
+                        class="w-full flex items-center justify-between px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-users w-5"></i>
+                            <span>User Management</span>
+                        </div>
+                        <i :class="{'rotate-180': open}"
+                            class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+                    </button>
+                    <div x-show="open" class="pl-11 space-y-1">
+                        <a href="{% url 'admin_user_list' 'student' %}"
+                            class="block py-2 px-2 text-sm {% if role == 'student' %}text-white bg-gray-800{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} rounded">Students</a>
+                        <a href="{% url 'admin_user_list' 'teacher' %}"
+                            class="block py-2 px-2 text-sm {% if role == 'teacher' %}text-white bg-gray-800{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} rounded">Teachers</a>
+                        <a href="{% url 'admin_user_list' 'hod' %}"
+                            class="block py-2 px-2 text-sm {% if role == 'hod' %}text-white bg-gray-800{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} rounded">HODs</a>
+                        <a href="{% url 'admin_user_list' 'principal' %}"
+                            class="block py-2 px-2 text-sm {% if role == 'principal' %}text-white bg-gray-800{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %} rounded">Principals</a>
+                    </div>
+                </div>
+
+                <a href="{% url 'system_health' %}"
+                    class="flex items-center space-x-3 px-4 py-3 bg-transparent text-gray-400 hover:bg-gray-800 rounded-lg hover:text-white transition">
+                    <i class="fas fa-server w-5"></i>
+                    <span>System Health</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <a href="{% url 'admin_user_list' role %}"
+                        class="text-sm text-gray-500 hover:text-indigo-600 mb-2 inline-block"><i
+                            class="fas fa-arrow-left"></i> Back to List</a>
+                    <h1 class="text-2xl font-bold text-gray-800">Edit {{ role|title }}</h1>
+                </div>
+            </div>
+
+            <div class="glass-panel p-8 max-w-2xl mx-auto">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block mb-2 text-sm font-medium text-gray-900">First Name</label>
+                            <input type="text" name="first_name" value="{{ user.first_name }}"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                                required>
+                        </div>
+                        <div>
+                            <label class="block mb-2 text-sm font-medium text-gray-900">Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.last_name }}"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block mb-2 text-sm font-medium text-gray-900">Email Address</label>
+                        <input type="email" name="email" value="{{ user.email }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                            required>
+                    </div>
+
+                    {% if role == 'teacher' or role == 'hod' %}
+                    <div class="mb-6">
+                        <label class="block mb-2 text-sm font-medium text-gray-900">Department</label>
+                        <input type="text" name="department" value="{{ user.department }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                    </div>
+                    {% endif %}
+
+                    <div class="flex items-center justify-end space-x-4">
+                        <a href="{% url 'admin_user_list' role %}"
+                            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">Cancel</a>
+                        <button type="submit"
+                            class="text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">Save
+                            Changes</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

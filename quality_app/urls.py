@@ -54,6 +54,10 @@ urlpatterns = [
     
     # --- Admin Interface ---
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin-dashboard/users/<str:role>/', views.admin_user_list, name='admin_user_list'),
+    path('admin-dashboard/user/<str:role>/<int:user_id>/edit/', views.edit_user, name='admin_edit_user'),
+    path('admin-dashboard/user/<str:role>/<int:user_id>/delete/', views.delete_user, name='admin_delete_user'),
+    path('admin-dashboard/system-health/', views.system_health, name='system_health'),
 ]
 
 if settings.DEBUG:

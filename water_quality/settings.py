@@ -75,13 +75,13 @@ WSGI_APPLICATION = 'water_quality.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-   'default': {
-       'ENGINE': 'django.db.backends.mysql',
-       'NAME': 'testing',
-       'USER':'root',
-       'PASSWORD':'',
-       'HOST':'localhost',
-       'PORT':'3306',
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.environ.get('DB_NAME', 'eduAi'),
+        'USER': os.environ.get('DB_USER', 'root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
         'OPTIONS':{
            'init_command':"SET sql_mode='STRICT_TRANS_TABLES'"
         }

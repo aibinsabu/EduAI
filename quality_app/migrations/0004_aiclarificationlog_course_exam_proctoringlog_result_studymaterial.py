@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('exam_type', models.CharField(choices=[('MCQ', 'Multiple Choice Questions'), ('Essay', 'Essay/Subjective'), ('Mixed', 'Mixed Format')], default='MCQ', max_length=10)),
                 ('difficulty', models.CharField(choices=[('Easy', 'Easy'), ('Medium', 'Medium'), ('Hard', 'Hard')], default='Medium', max_length=10)),
-                ('proctoring_config', models.JSONField(default=dict, help_text="JSON configuration for proctoring settings (e.g., {'camera': true, 'screen': true})")),
+                ('proctoring_config', models.TextField(default='{}', help_text="JSON configuration for proctoring settings (e.g., {'camera': true, 'screen': true})")),
                 ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='quality_app.course')),
                 ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='quality_app.teacher')),
             ],

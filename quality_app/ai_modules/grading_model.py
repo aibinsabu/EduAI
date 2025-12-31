@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import math
 
-# from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer, util
 
 class BaseGradingModel(ABC):
     @abstractmethod
@@ -10,8 +10,8 @@ class BaseGradingModel(ABC):
 
 class SemanticGrader(BaseGradingModel):
     def __init__(self):
-        # self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        print("Initializing Semantic Grader (Mocked)")
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        print("Initializing Semantic Grader (Real Model Loaded)")
 
     def grade_submission(self, question, student_answer, ideal_answer, rubric=""):
         """
@@ -21,12 +21,12 @@ class SemanticGrader(BaseGradingModel):
         if not student_answer:
             return {"score": 0, "feedback": "No answer provided."}
 
-        # Mock similarity calculation
-        # In prod: embedding1 = self.model.encode(student_answer)
-        #          embedding2 = self.model.encode(ideal_answer)
-        #          sim = util.cos_sim(embedding1, embedding2)
+        # Real Similarity Calculation
+        embedding1 = self.model.encode(student_answer)
+        embedding2 = self.model.encode(ideal_answer)
+        sim = float(util.cos_sim(embedding1, embedding2)[0][0])
         
-        sim = self._mock_similarity(student_answer, ideal_answer)
+        # sim = self._mock_similarity(student_answer, ideal_answer)
         
         score = round(sim * 10, 1) # Scale to 10
         

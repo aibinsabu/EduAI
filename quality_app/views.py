@@ -396,14 +396,47 @@ def upload_material(request):
         teacher = Teacher.objects.get(id=teacher_id)
         course = Course.objects.get(id=course_id)
         
-        StudyMaterial.objects.create(
+        study_material = StudyMaterial.objects.create(
             title=title,
             course=course,
             teacher=teacher,
             file=file,
-            status='Approved' # Auto-approve for now or set to Pending based on logic
+            status='Approved'
         )
-        messages.success(request, "Material uploaded successfully.")
+        
+        # Trigger Question Generation
+        try:
+            if file and file.name.endswith('.txt'):
+                # Read content from the uploaded file
+                # Since it was just uploaded, it might be in memory or on disk.
+                # Use the FieldFile open method
+                study_material.file.open('r')
+                content = study_material.file.read()
+                if isinstance(content, bytes):
+                    content = content.decode('utf-8')
+                study_material.file.close()
+
+                if content:
+                    aqg = AQGService.get_instance()
+                    questions = aqg.generate_questions(content, count=5)
+                    
+                    for q_data in questions:
+                        Question.objects.create(
+                            study_material=study_material,
+                            question_text=q_data.get('question'),
+                            question_type=q_data.get('type'),
+                            options=json.dumps(q_data.get('options')) if q_data.get('options') else None,
+                            answer=q_data.get('answer') or q_data.get('answer_key')
+                        )
+                    messages.success(request, "Material uploaded and questions generated successfully.")
+                else:
+                    messages.success(request, "Material uploaded (File was empty).")
+            else:
+                messages.success(request, "Material uploaded successfully. (Auto-QG currently supports .txt files)")
+        except Exception as e:
+            print(f"Error generating questions: {e}")
+            messages.warning(request, f"Material uploaded, but question generation failed: {e}")
+
         return redirect('teacher_courses')
         
     return redirect('teacher_courses') # Should be accessed via POST from modal
@@ -478,7 +511,7 @@ def create_exam(request):
             duration=duration,
             exam_type=exam_type,
             difficulty=difficulty,
-            proctoring_config=proctoring_config,
+            proctoring_config=json.dumps(proctoring_config),
             creation_method='AI', # Explicitly marking as AI for dashboard stats
             created_by=teacher,
             status='Scheduled'
@@ -840,4 +873,135 @@ def admin_dashboard(request):
     }
 
     return render(request, 'admin_dashboard.html', context)
+
+def admin_user_list(request, role):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied. Admin only.")
+        return redirect('login')
+
+    users = []
+    role_name = ""
+
+    if role == 'student':
+        users = User.objects.filter(is_superuser=False)
+        role_name = "Students"
+    elif role == 'teacher':
+        users = Teacher.objects.all()
+        role_name = "Teachers"
+    elif role == 'hod':
+        users = HOD.objects.all()
+        role_name = "HODs"
+    elif role == 'principal':
+        users = Principal.objects.all()
+        role_name = "Principals"
+    else:
+        messages.error(request, "Invalid role.")
+        return redirect('admin_dashboard')
+
+    context = {
+        'users': users,
+        'role_key': role,
+        'role_name': role_name
+    }
+    return render(request, 'admin_user_list.html', context)
+
+
+def get_model_by_role(role):
+    if role == 'student':
+        return User, 'student'
+    elif role == 'teacher':
+        return Teacher, 'teacher'
+    elif role == 'hod':
+        return HOD, 'hod'
+    elif role == 'principal':
+        return Principal, 'principal'
+    return None, None
+
+def edit_user(request, role, user_id):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    Model, _ = get_model_by_role(role)
+    if not Model:
+        messages.error(request, "Invalid role.")
+        return redirect('admin_dashboard')
+        
+    try:
+        user_obj = Model.objects.get(id=user_id)
+    except Model.DoesNotExist:
+        messages.error(request, "User not found.")
+        return redirect('admin_user_list', role=role)
+
+    if request.method == 'POST':
+        # Common fields
+        user_obj.first_name = request.POST.get('first_name')
+        user_obj.last_name = request.POST.get('last_name')
+        user_obj.email = request.POST.get('email')
+        
+        # Specific fields
+        if role == 'teacher' or role == 'hod':
+             user_obj.department = request.POST.get('department')
+             
+        user_obj.save()
+        messages.success(request, f"{role.capitalize()} details updated successfully.")
+        return redirect('admin_user_list', role=role)
+        
+    return render(request, 'admin_edit_user.html', {'user': user_obj, 'role': role})
+
+def delete_user(request, role, user_id):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    Model, _ = get_model_by_role(role)
+    if not Model:
+        messages.error(request, "Invalid role.")
+        return redirect('admin_dashboard')
+        
+    try:
+        user_obj = Model.objects.get(id=user_id)
+        user_obj.delete()
+        messages.success(request, f"{role.capitalize()} deleted successfully.")
+    except Model.DoesNotExist:
+        messages.error(request, "User not found.")
+        
+    return redirect('admin_user_list', role=role)
+
+def system_health(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    import psutil
+    from django.db import connection
+    
+    # System Metrics
+    cpu_usage = psutil.cpu_percent(interval=1)
+    ram_usage = psutil.virtual_memory().percent
+    ram_total = round(psutil.virtual_memory().total / (1024**3), 2)
+    ram_available = round(psutil.virtual_memory().available / (1024**3), 2)
+    disk_usage = psutil.disk_usage('/').percent
+    disk_total = round(psutil.disk_usage('/').total / (1024**3), 2)
+    disk_free = round(psutil.disk_usage('/').free / (1024**3), 2)
+    
+    # DB Status
+    db_status = "Unknown"
+    try:
+        connection.ensure_connection()
+        db_status = "Connected"
+    except Exception as e:
+        db_status = f"Error: {e}"
+        
+    context = {
+        'cpu_usage': cpu_usage,
+        'ram_usage': ram_usage,
+        'ram_total': ram_total,
+        'ram_available': ram_available,
+        'disk_usage': disk_usage,
+        'disk_total': disk_total,
+        'disk_free': disk_free,
+        'db_status': db_status
+    }
+    return render(request, 'admin_system_health.html', context)
 

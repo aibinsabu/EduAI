@@ -151,7 +151,7 @@ class Exam(models.Model):
     
     exam_type = models.CharField(max_length=10, choices=EXAM_TYPES, default='MCQ')
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_LEVELS, default='Medium')
-    proctoring_config = models.JSONField(default=dict, help_text="JSON configuration for proctoring settings (e.g., {'camera': true, 'screen': true})")
+    proctoring_config = models.TextField(default='{}', help_text="JSON configuration for proctoring settings (e.g., {'camera': true, 'screen': true})")
 
     CREATION_METHODS = [
         ('Manual', 'Manual'),
@@ -198,3 +198,20 @@ class AIClarificationLog(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE)
     query_text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+class Question(models.Model):
+    QUESTION_TYPES = [
+        ('MCQ', 'Multiple Choice Question'),
+        ('SAQ', 'Short Answer Question'),
+        ('EBQ', 'Essay Based Question'),
+    ]
+    
+    study_material = models.ForeignKey(StudyMaterial, on_delete=models.CASCADE, related_name='generated_questions')
+    question_text = models.TextField()
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
+    options = models.TextField(help_text="JSON representation of options for MCQ", null=True, blank=True)
+    answer = models.TextField(help_text="Correct answer or answer key")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.question_type}: {self.question_text[:50]}..."
