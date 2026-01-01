@@ -10,7 +10,7 @@ class BaseGradingModel(ABC):
 
 class SemanticGrader(BaseGradingModel):
     def __init__(self):
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu', model_kwargs={"low_cpu_mem_usage": False})
         print("Initializing Semantic Grader (Real Model Loaded)")
 
     def grade_submission(self, question, student_answer, ideal_answer, rubric=""):

@@ -4,6 +4,8 @@ from . import views, api
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+# Force reload
 urlpatterns = [
     path('', views.home, name='home'),
     path('index/', views.index, name='index'),
@@ -35,6 +37,7 @@ urlpatterns = [
     path('teacher/courses/', views.teacher_courses, name='teacher_courses'),
     path('teacher/material/upload/', views.upload_material, name='upload_material'),
     path('teacher/exams/', views.teacher_exams, name='teacher_exams'),
+    path('teacher/exam/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
     path('teacher/exam/create/', views.create_exam, name='create_exam'),
     path('teacher/results/', views.teacher_results, name='teacher_results'),
     path('teacher/result/<int:result_id>/', views.result_detail, name='result_detail'),

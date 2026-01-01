@@ -1,178 +1,266 @@
-{% load static %}
-{% include 'header.html' %}
-            <div class="container-xxl py-5 bg-primary hero-header mb-5">
-                <div class="container my-5 py-5 px-lg-5">
-                    <div class="row g-5 py-5">
-                        <div class="col-12 text-center">
-                            <h1 class="text-white animated zoomIn">Register</h1>
-                            <hr class="bg-white mx-auto mt-0" style="width: 90px;">
-                            <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb justify-content-center">
-                                    <li class="breadcrumb-item"><a class="text-white" href="#">Home</a></li>
-                                    <li class="breadcrumb-item"><a class="text-white" href="#">Pages</a></li>
-                                    <li class="breadcrumb-item text-white active" aria-current="page">Register</li>
-                                </ol>
-                            </nav>
-                        </div>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Student Registration - EduQuality AI</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #0f172a;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: 'Outfit', sans-serif;
+            padding: 40px 20px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Scrollbar for textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        /* Reuse similar input styles as login, simplified for grid */
+        .input-field,
+        .select-field {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 0.8rem 1rem;
+            border-radius: 0.75rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .select-field option {
+            background-color: #1e293b;
+            color: white;
+        }
+
+        .input-field:focus,
+        .select-field:focus {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 0.3rem;
+            margin-left: 0.2rem;
+        }
+
+        .submit-btn {
+            background: linear-gradient(to right, #0ea5e9, #2563eb);
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center">
+
+    <div class="w-full max-w-4xl">
+        <!-- Logo -->
+        <div class="text-center mb-10">
+            <a href="{% url 'index' %}"
+                class="inline-flex items-center gap-2 text-white/90 hover:text-white transition group">
+                <i class="fas fa-cube text-brand-400 text-2xl group-hover:rotate-12 transition-transform"></i>
+                <span class="font-bold text-3xl tracking-tight">EduQuality AI</span>
+            </a>
+        </div>
+
+        <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-5">
+
+                <!-- Sidebar Decor -->
+                <div
+                    class="hidden md:flex md:col-span-2 bg-gradient-to-br from-brand-600/80 to-purple-800/80 p-10 flex-col justify-between relative overflow-hidden">
+                    <div
+                        class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20">
+                    </div>
+                    <div class="relative z-10">
+                        <h2 class="text-3xl font-bold text-white mb-2">Join as <br>Student</h2>
+                        <div class="w-12 h-1 bg-brand-400 rounded-full mb-6"></div>
+                        <p class="text-blue-100 text-sm leading-relaxed">
+                            Unlock your potential with our AI-driven learning platform. Track progress, take smart
+                            exams, and get personalized feedback.
+                        </p>
+                    </div>
+                    <div class="relative z-10 text-xs text-blue-200">
+                        <i class="fas fa-shield-alt mr-1"></i> Secure Registration
                     </div>
                 </div>
-            </div>
-        </div>
-        <!-- Navbar & Hero End -->
 
-
-        <!-- Full Screen Search Start -->
-        <div class="modal fade" id="searchModal" tabindex="-1">
-            <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content" style="background: rgba(29, 29, 39, 0.7);">
-                    <div class="modal-header border-0">
-                        <button type="button" class="btn bg-white btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <!-- Form Area -->
+                <div class="col-span-1 md:col-span-3 p-8 md:p-10 bg-white/5 backdrop-blur-sm">
+                    <div class="flex items-center justify-between mb-8">
+                        <h3 class="text-2xl font-bold text-white">Create Account</h3>
+                        <a href="{% url 'login' %}" class="text-sm text-brand-400 hover:text-brand-300 font-medium">
+                            Sign In Instead <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
                     </div>
-                    <div class="modal-body d-flex align-items-center justify-content-center">
-                        <div class="input-group" style="max-width: 600px;">
-                            <input type="text" class="form-control bg-transparent border-light p-3" placeholder="Type search keyword">
-                            <button class="btn btn-light px-4"><i class="bi bi-search"></i></button>
+
+                    {% if messages %}
+                    <div class="space-y-2 mb-6">
+                        {% for message in messages %}
+                        <div
+                            class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm flex items-center gap-2">
+                            <i class="fas fa-info-circle text-amber-400"></i>
+                            {{ message }}
                         </div>
+                        {% endfor %}
                     </div>
-                </div>
-            </div>
-        </div>
-        <!-- Full Screen Search End -->
+                    {% endif %}
 
+                    <form method="post" enctype="multipart/form-data" class="space-y-6">
+                        {% csrf_token %}
 
-        <!-- Contact Start -->
-        <div class="container-xxl py-5">
-            <div class="container px-lg-5">
-                <div class="row justify-content-center">
-                    <div class="col-lg-7">
-                        <div class="section-title position-relative text-center mb-5 pb-2 wow fadeInUp" data-wow-delay="0.1s">
-                            <h6 class="position-relative d-inline text-primary ps-4">Registration</h6>
-                            <h2 class="mt-2">Registration for Students</h2>
+                        <!-- Personal Info -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label>First Name</label>
+                                <input type="text" name="first_name" class="input-field" placeholder="John" required>
+                            </div>
+                            <div>
+                                <label>Last Name</label>
+                                <input type="text" name="last_name" class="input-field" placeholder="Doe" required>
+                            </div>
                         </div>
-                        {% if messages %}
-                            {% for message in messages %}
-                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                    {{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label>Email Address</label>
+                                <input type="email" name="email" class="input-field" placeholder="john@example.com"
+                                    required>
+                            </div>
+                            <div>
+                                <label>Date of Birth</label>
+                                <input type="date" name="dob" class="input-field text-gray-400" required>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label>Gender</label>
+                                <select name="gender" class="select-field" required>
+                                    <option value="" disabled selected>Select Gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Registration No.</label>
+                                <input type="text" name="registration_no" class="input-field" placeholder="REG-202X-000"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label>Department</label>
+                            <select name="department" class="select-field" required>
+                                <option value="" disabled selected>Select Department</option>
+                                <option value="cs">Computer Science</option>
+                                <option value="ee">Electrical Engineering</option>
+                                <option value="me">Mechanical Engineering</option>
+                                <option value="ce">Civil Engineering</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label>Address</label>
+                            <textarea name="address" class="input-field h-24 resize-none"
+                                placeholder="Your residential address..."></textarea>
+                        </div>
+
+                        <!-- Security -->
+                        <div class="pt-4 border-t border-white/10">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label>Password</label>
+                                    <input type="password" name="password" class="input-field" placeholder="••••••••"
+                                        required>
                                 </div>
-                            {% endfor %}
-                        {% endif %}
-                        <div class="wow fadeInUp" data-wow-delay="0.3s">
-                            <form method="post" enctype="multipart/form-data">
-                                {% csrf_token %}
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="text" name="first_name" class="form-control" id="FirstName" placeholder="First Name">
-                                            <label for="FirstName">First Name</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="text" name="last_name" class="form-control" id="LastName" placeholder="Last Name">
-                                            <label for="LastName">Last Name</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-floating">
-                                            <input type="email" name="email" class="form-control" id="email" placeholder="Email Address">
-                                            <label for="email">Email Address</label>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="date" name="dob" class="form-control" id="dob" placeholder="Date of Birth">
-                                            <label for="dob">Date of Birth</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <select class="form-control" name="gender" id="gender" placeholder="Gender">
-                                                <option value="">Select Gender</option>
-                                                <option value="male">Male</option>
-                                                <option value="female">Female</option>
-                                                <option value="other">Other</option>
-                                            </select>
-                                            <label for="gender">Gender</label>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="text" name="registration_no" class="form-control" id="registration_no" placeholder="Registration Number">
-                                            <label for="registration_no">Registration Number</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <select class="form-control" name="department" id="department" placeholder="Department">
-                                                <option value="">Select Department</option>
-                                                <option value="cs">Computer Science</option>
-                                                <option value="ee">Electrical Engineering</option>
-                                                <option value="me">Mechanical Engineering</option>
-                                                <option value="ce">Civil Engineering</option>
-                                            </select>
-                                            <label for="department">Department</label>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <div class="form-floating">
-                                            <textarea class="form-control" name="address" placeholder="Address" id="address" style="height: 150px"></textarea>
-                                            <label for="address">Address    </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="password" name="password" class="form-control" id="password" placeholder="Password">
-                                            <label for="password">Password</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="password" name="confirm_password" class="form-control" id="confirm_password" placeholder="Confirm Password">
-                                            <label for="confirm_password">Confirm Password</label>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <button class="btn btn-primary w-100 py-3" type="submit">Register</button>
-                                    </div>
+                                <div>
+                                    <label>Confirm Password</label>
+                                    <input type="password" name="confirm_password" class="input-field"
+                                        placeholder="••••••••" required>
                                 </div>
-                            </form>
-                            <a href="{% url 'login' %}">Already have an account? Login here.</a>
+                            </div>
                         </div>
-                    </div>
+
+                        <button type="submit"
+                            class="submit-btn w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg shadow-blue-500/25 mt-4">
+                            Register Student Account
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
-        <!-- Contact End -->
-        
 
-        <!-- Footer Start -->
-         {% include 'footer.html' %}
-         
-        <!-- Footer End -->
-
-
-        <!-- Back to Top -->
-        <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top pt-2"><i class="bi bi-arrow-up"></i></a>
+        <div class="text-center mt-8 text-white/20 text-xs">
+            &copy; 2026 EduQuality AI. All rights reserved.
+        </div>
     </div>
 
-    <!-- JavaScript Libraries -->
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'lib/wow/wow.min.js' %}"></script>
-    <script src="{% static 'lib/easing/easing.min.js' %}"></script>
-    <script src="{% static 'lib/waypoints/waypoints.min.js' %}"></script>
-    <script src="{% static 'lib/owlcarousel/owl.carousel.min.js' %}"></script>
-    <script src="{% static 'lib/isotope/isotope.pkgd.min.js' %}"></script>
-    <script src="{% static 'lib/lightbox/js/lightbox.min.js' %}"></script>
-
-    <!-- Template Javascript -->
-    <script src="{% static 'js/main.js' %}"></script>
 </body>
 
 </html>

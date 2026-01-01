@@ -5,7 +5,7 @@ from django.contrib import messages
 from .models import *
 from django.contrib.auth import authenticate, login as auth_login
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
-from .ai_modules import AQGService, GradingService, SupportService, ProctoringService
+from .ai_modules import generate_questions, extract_text_from_pdf, GradingService, SupportService, ProctoringService
 import json # Ensure json is imported
 
 
@@ -406,33 +406,45 @@ def upload_material(request):
         
         # Trigger Question Generation
         try:
-            if file and file.name.endswith('.txt'):
-                # Read content from the uploaded file
-                # Since it was just uploaded, it might be in memory or on disk.
-                # Use the FieldFile open method
-                study_material.file.open('r')
-                content = study_material.file.read()
-                if isinstance(content, bytes):
-                    content = content.decode('utf-8')
-                study_material.file.close()
+            if file:
+                content = ""
+                file_ext = file.name.split('.')[-1].lower()
+
+                if file_ext == 'txt':
+                    study_material.file.open('r')
+                    content = study_material.file.read()
+                    if isinstance(content, bytes):
+                        content = content.decode('utf-8')
+                    study_material.file.close()
+
+                elif file_ext == 'pdf':
+                    # Save temporarily to disk to read if needed by external lib or use BytesIO if library supports it
+                    # extract_text_from_pdf in qg_model uses pdfplumber.open(path).
+                    # Since we are using FileField, the file might be in memory or temp file.
+                    # We need the absolute path.
+                    try:
+                        content = extract_text_from_pdf(study_material.file.path)
+                    except Exception as pdf_err:
+                        print(f"PDF extraction error: {pdf_err}")
+                        content = ""
 
                 if content:
-                    aqg = AQGService.get_instance()
-                    questions = aqg.generate_questions(content, count=5)
+                    # aqg = AQGService.get_instance()
+                    questions = generate_questions(content, max_questions=5)
                     
                     for q_data in questions:
                         Question.objects.create(
                             study_material=study_material,
                             question_text=q_data.get('question'),
-                            question_type=q_data.get('type'),
-                            options=json.dumps(q_data.get('options')) if q_data.get('options') else None,
-                            answer=q_data.get('answer') or q_data.get('answer_key')
+                            question_type='SAQ', # Defaulting to SAQ as new model returns text/answer pairs
+                            # options=json.dumps(q_data.get('options')) if q_data.get('options') else None,
+                            answer=q_data.get('answer')
                         )
                     messages.success(request, "Material uploaded and questions generated successfully.")
                 else:
-                    messages.success(request, "Material uploaded (File was empty).")
+                    messages.warning(request, "Material uploaded but could not extract text for QG (Empty or unsupported format).")
             else:
-                messages.success(request, "Material uploaded successfully. (Auto-QG currently supports .txt files)")
+                messages.warning(request, "Material uploaded but file handling failed.")
         except Exception as e:
             print(f"Error generating questions: {e}")
             messages.warning(request, f"Material uploaded, but question generation failed: {e}")
@@ -493,10 +505,28 @@ def create_exam(request):
         if request.POST.get('creation_method') == 'AI' or True: # Force AI for demo if needed, or check a flag
              # Fetch course material (simplification: just taking the course name/desc as text context for now)
              # In reality, you'd fetch StudyMaterial.objects.filter(course=course).first().file.read()
-             context_text = f"Content for course {course.name}. " + " ".join([m.title for m in StudyMaterial.objects.filter(course=course)])
+             # Fetch course material (text aggregation)
+             context_text = f"Content for course {course.name}. "
              
-             aqg = AQGService.get_instance()
-             questions = aqg.generate_questions(context_text, count=5, difficulty=difficulty)
+             materials = StudyMaterial.objects.filter(course=course)
+             for m in materials:
+                 try:
+                     f_ext = m.file.name.split('.')[-1].lower()
+                     if f_ext == 'txt':
+                        with open(m.file.path, 'r', encoding='utf-8') as f:
+                            context_text += f.read() + " "
+                     elif f_ext == 'pdf':
+                        context_text += extract_text_from_pdf(m.file.path) + " "
+                 except Exception as e:
+                     print(f"Error reading material {m.id}: {e}")
+             
+             if len(context_text) < 50:
+                 # Fallback if no content found
+                 context_text += " ".join([m.title for m in materials])
+             
+             num_questions = int(request.POST.get('num_questions', 5))
+             # aqg = AQGService.get_instance()
+             questions = generate_questions(context_text, max_questions=num_questions)
              # Store these questions somewhere. For now, we'll put them in a JSON field if Exam had one, 
              # or just log them. Let's assume Exam model has a 'questions_data' field or we create Question objects.
              # Since Question model isn't in the provided models.py, I'll serialize them to a potential new field 
@@ -517,7 +547,15 @@ def create_exam(request):
             status='Scheduled'
         )
         
-        # If we had a Questions model, we would save them here.
+        if generated_questions_data:
+            for q_data in generated_questions_data:
+                Question.objects.create(
+                    exam=exam,
+                    question_text=q_data.get('question'),
+                    question_type='SAQ', # Default or infer
+                    answer=q_data.get('answer')
+                )
+
         
         messages.success(request, "Exam created and scheduled successfully.")
         return redirect('teacher_exams')
@@ -563,6 +601,26 @@ def finalize_result(request, result_id):
         return redirect('teacher_results')
     
     return redirect('teacher_results')
+
+def delete_exam(request, exam_id):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        # Verify ownership (optional but good security)
+        # if exam.course.created_by.id != request.session.get('user_id'):
+             # messages.error(request, "Permission denied.")
+             # return redirect('teacher_dashboard')
+             
+        exam.delete()
+        messages.success(request, "Exam deleted successfully.")
+    except Exam.DoesNotExist:
+        messages.error(request, "Exam not found.")
+    except Exception as e:
+        messages.error(request, f"Error deleting exam: {str(e)}")
+        
+    return redirect('teacher_exams')
 
 # --- Principal Dashboard Views ---
 
@@ -837,7 +895,8 @@ def student_dashboard(request):
     
     # Get enrolled courses (Assuming logic: All courses in student's department)
     student_dept = student.department
-    courses = Course.objects.filter(department=student_dept)
+    # Using icontains to handle cases like 'cs' vs 'CSE' vs 'Computer Science' more gracefully for now
+    courses = Course.objects.filter(department__icontains=student_dept)
     
     # Upcoming Exams
     upcoming_exams = Exam.objects.filter(course__in=courses, status='Scheduled').order_by('date')
@@ -915,9 +974,13 @@ def exam_interface(request, exam_id):
         messages.warning(request, "You have already attempted this exam.")
         return redirect('student_dashboard')
 
+    # Fetch generated questions
+    questions = Question.objects.filter(exam=exam)
+
     context = {
         'exam': exam,
-        'student': request.user
+        'student': request.user,
+        'questions': questions
     }
     return render(request, 'exam_interface.html', context)
 
@@ -932,33 +995,58 @@ def submit_exam(request, exam_id):
         # In a real app, retrieve student answers from POST data
         # answers = json.loads(request.body).get('answers')
         
-        # Mock answers for demonstration of grading
-        answers = [
-            {"question_text": "Explain photosynthesis.", "student_answer": "It is how plants make food using sun."}
-        ]
-        
-        grader = GradingService.get_instance()
-        total_score = 0
-        feedback_summary = []
-        
-        for ans in answers:
-            # ideal_answer would be fetched from the DB
-            ideal = "Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to create oxygen and energy in the form of sugar."
-            
-            grading_result = grader.grade_submission(ans['question_text'], ans['student_answer'], ideal)
-            total_score += grading_result['score']
-            feedback_summary.append(grading_result['feedback'])
-            
-        # Create Result object
-        exam = Exam.objects.get(id=exam_id)
-        Result.objects.create(
+        result_obj = Result.objects.create(
             exam=exam,
             student=request.user,
-            score=total_score,
-            is_pass=total_score > 5, # Simple threshold
-            ai_feedback=" | ".join(feedback_summary),
-            status='Pending' # Pending teacher confirmation even after AI grading
+            score=0, # Will update after grading
+            is_pass=False,
+            ai_feedback="", 
+            status='Pending'
         )
+
+        total_score = 0
+        feedback_summary = []
+        grader = GradingService.get_instance()
+        
+        # Iterate through exam questions
+        questions = Question.objects.filter(exam=exam)
+        for question in questions:
+            # Retrieve answer from POST data (assuming input name is question_{id})
+            student_response = request.POST.get(f'question_{question.id}')
+            
+            if not student_response:
+                student_response = "No Answer"
+
+            grading_result = {'score': 0, 'feedback': 'No answer provided'}
+            
+            # Grade based on type
+            if question.question_type == 'MCQ':
+                if student_response.strip().lower() == question.answer.strip().lower():
+                    grading_result = {'score': 1, 'feedback': 'Correct'} # Simple 1 point per MCQ
+                else:
+                    grading_result = {'score': 0, 'feedback': 'Incorrect'}
+            else:
+                 # AI Grading for Essay/SAQ
+                 grading_result = grader.grade_submission(question.question_text, student_response, question.answer)
+
+            total_score += grading_result['score']
+            feedback_summary.append(f"Q: {grading_result['feedback']}")
+
+            # Save StudentAnswer
+            StudentAnswer.objects.create(
+                result=result_obj,
+                question=question,
+                question_text=question.question_text,
+                student_answer=student_response,
+                ai_score=grading_result['score'],
+                feedback=grading_result['feedback']
+            )
+
+        # Update Result
+        result_obj.score = total_score
+        result_obj.is_pass = total_score >= (questions.count() * 0.4) # 40% pass mark for example
+        result_obj.ai_feedback = " | ".join(feedback_summary)
+        result_obj.save()
 
         messages.success(request, "Exam submitted successfully! AI Grading in progress...")
         return redirect('student_dashboard')

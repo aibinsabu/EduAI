@@ -207,7 +207,8 @@ class Question(models.Model):
         ('EBQ', 'Essay Based Question'),
     ]
     
-    study_material = models.ForeignKey(StudyMaterial, on_delete=models.CASCADE, related_name='generated_questions')
+    study_material = models.ForeignKey(StudyMaterial, on_delete=models.SET_NULL, related_name='generated_questions', null=True, blank=True)
+    exam = models.ForeignKey('Exam', on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
     question_text = models.TextField()
     question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
     options = models.TextField(help_text="JSON representation of options for MCQ", null=True, blank=True)
@@ -216,3 +217,14 @@ class Question(models.Model):
 
     def __str__(self):
         return f"{self.question_type}: {self.question_text[:50]}..."
+
+class StudentAnswer(models.Model):
+    result = models.ForeignKey(Result, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.SET_NULL, null=True, blank=True)
+    question_text = models.TextField(help_text="Snapshot of question text in case Question is deleted")
+    student_answer = models.TextField()
+    ai_score = models.FloatField(default=0.0)
+    feedback = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"Answer for {self.result} - {self.question_text[:30]}"
