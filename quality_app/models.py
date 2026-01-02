@@ -51,6 +51,32 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
 
 
+class Student(models.Model):
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128)
+    phone = models.CharField(max_length=15, null=True, blank=True)
+    department = models.CharField(max_length=100, null=True, blank=True)
+    gender = models.CharField(max_length=10, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
+    profile = models.ImageField(upload_to="profile/", null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    registration_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.BooleanField(default=False)
+    
+    # Optional: Link to User if we want to keep using Django Auth for a while
+    # user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+
+    class Meta:
+        db_table = 'student'
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+
+
 class Principal(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -165,7 +191,7 @@ class Exam(models.Model):
 
 class Result(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
-    student = models.ForeignKey(User, on_delete=models.CASCADE) # Assuming User can be a student
+    student = models.ForeignKey(Student, on_delete=models.CASCADE) 
     score = models.FloatField()
     is_pass = models.BooleanField()
     ai_feedback = models.TextField(blank=True)
@@ -189,14 +215,14 @@ class StudyMaterial(models.Model):
 
 class ProctoringLog(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
     flag_type = models.CharField(max_length=50) # e.g., 'Gaze', 'Screen', 'Audio'
     timestamp = models.DateTimeField(auto_now_add=True)
     severity = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High')])
 
 class AIClarificationLog(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
     query_text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 

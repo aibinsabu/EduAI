@@ -3,10 +3,21 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib import messages
 from .models import *
-from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
-from .ai_modules import generate_questions, extract_text_from_pdf, GradingService, SupportService, ProctoringService
-import json # Ensure json is imported
+from .ai_modules import (
+    generate_questions,
+    extract_text_from_pdf,
+    GradingService,
+    SupportService,
+    ProctoringService
+)
+import json
+
+# ---------------------------------------------------
+# GLOBAL PROCTORING INSTANCE
+# ---------------------------------------------------
+# proctoring_engine = ProctoringService.get_instance() # Moved to lazy load in proctoring_stream
 
 
 # Create your views here.
@@ -33,75 +44,49 @@ def hod_dashboard(request):
 
 def login(request):
     if request.method == "POST":
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        
-        # 1. Check Student (User model) - Standard Django Auth
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+
+        # Check Admin(Superuser) in User table
         try:
             user = User.objects.get(email=email)
-            if user.check_password(password):
+            if user.is_superuser and user.check_password(password):
                 auth_login(request, user)
-                if user.is_superuser:
-                    request.session['role'] = 'admin'
-                    messages.success(request, "Login successful as Admin.")
-                    return redirect('admin_dashboard')
-
-                request.session['role'] = 'student'
-                messages.success(request, "Login successful as Student.")
-                return redirect('student_dashboard')
+                request.session["role"] = "admin"
+                return redirect("admin_dashboard")
         except User.DoesNotExist:
-            pass # Continue to check other roles
-
-        # 2. Check Teacher
-        try:
-            teacher = Teacher.objects.get(email=email)
-            if check_password(password, teacher.password):
-                request.session['user_id'] = teacher.id
-                request.session['role'] = 'teacher'
-                request.session['user_email'] = teacher.email
-                request.session['user_name'] = f"{teacher.first_name} {teacher.last_name}"
-                messages.success(request, "Login successful as Teacher.")
-                return redirect('teacher_dashboard')
-        except Teacher.DoesNotExist:
             pass
 
-        # 3. Check HOD
+        # Check Student Table
         try:
-            hod = HOD.objects.get(email=email)
-            if check_password(password, hod.password):
-                request.session['user_id'] = hod.id
-                request.session['role'] = 'hod'
-                request.session['user_email'] = hod.email
-                request.session['user_name'] = f"{hod.first_name} {hod.last_name}"
-                messages.success(request, "Login successful as HOD.")
-                return redirect('hod_dashboard')
-        except HOD.DoesNotExist:
+            student = Student.objects.get(email=email)
+            if check_password(password, student.password):
+                request.session["role"] = "student"
+                request.session["student_id"] = student.id
+                return redirect("student_dashboard")
+        except Student.DoesNotExist:
             pass
 
-        # 4. Check Principal
-        try:
-            principal = Principal.objects.get(email=email)
-            if check_password(password, principal.password):
-                request.session['user_id'] = principal.id
-                request.session['role'] = 'principal'
-                request.session['user_email'] = principal.email
-                request.session['user_name'] = f"{principal.first_name} {principal.last_name}"
-                messages.success(request, "Login successful as Principal.")
-                return redirect('principal_dashboard')
-        except Principal.DoesNotExist:
-            pass
+        # Check Other Roles
+        for model, role in [(Teacher, "teacher"), (HOD, "hod"), (Principal, "principal")]:
+            try:
+                obj = model.objects.get(email=email)
+                if check_password(password, obj.password):
+                    request.session["role"] = role
+                    request.session["user_id"] = obj.id
+                    request.session["user_name"] = f"{obj.first_name} {obj.last_name}"
+                    return redirect(f"{role}_dashboard")
+            except model.DoesNotExist:
+                pass
 
-        # If no match found
-        messages.error(request, "Invalid email or password.", extra_tags='danger')
-
-    return render(request, 'login.html')
+        messages.error(request, "Invalid credentials")
+    return render(request, "login.html")
 
 
 def logout(request):
-    from django.contrib.auth import logout as auth_logout
     auth_logout(request)
-    messages.success(request, "Logged out successfully.")
-    return redirect('login')
+    request.session.flush()
+    return redirect("login")
 
 def about(request):
     return render(request, 'about.html')
@@ -293,8 +278,8 @@ def student_registration(request):
             return redirect('student_registration')
 
         # Prevent duplicate email
-        if User.objects.filter(email=email).exists():
-            messages.error(request, "A user with this email already exists.")
+        if Student.objects.filter(email=email).exists():
+            messages.error(request, "A student with this email already exists.")
             return redirect('student_registration')
         elif Principal.objects.filter(email=email).exists():
             messages.error(request, "An User with this email already exists.")
@@ -306,11 +291,12 @@ def student_registration(request):
             messages.error(request, "An User with this email already exists.")
             return redirect('student_registration')
         
-        if User.objects.filter(registration_no=registration_no).exists():
+        if Student.objects.filter(registration_no=registration_no).exists():
             messages.error(request, "A student with this registration number already exists.")
             return redirect('student_registration')
-        # Create user and set password properly
-        user = User(
+        
+        # Create student and set password properly
+        student = Student(
             first_name=firstname,
             last_name=lastname,
             email=email,
@@ -319,11 +305,11 @@ def student_registration(request):
             registration_no=registration_no,
             department=department,
             address=address,
+            password=make_password(password)
         )
-        user.set_password(password)
-        user.save()
-        messages.success(request, "Registration successful.")
-        return redirect('student_dashboard')
+        student.save()
+        messages.success(request, "Registration successful. Please login.")
+        return redirect('login')
 
     return render(request, 'student-registration.html')
 
@@ -887,16 +873,22 @@ def generate_principal_report(request):
 # --- Student Dashboard Views ---
 
 def student_dashboard(request):
-    if not request.session.get('role') == 'student':
-        messages.error(request, "Access denied. Student only.")
-        return redirect('login')
+    if request.session.get("role") != "student":
+        return redirect("login")
 
-    student = request.user 
+    student_id = request.session.get("student_id")
+    if not student_id:
+        return redirect("login")
+
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        return redirect("login")
     
-    # Get enrolled courses (Assuming logic: All courses in student's department)
-    student_dept = student.department
-    # Using icontains to handle cases like 'cs' vs 'CSE' vs 'Computer Science' more gracefully for now
-    courses = Course.objects.filter(department__icontains=student_dept)
+    courses = Course.objects.none()
+    if student.department:
+        # Using icontains to handle cases like 'cs' vs 'CSE' vs 'Computer Science' more gracefully
+        courses = Course.objects.filter(department__icontains=student.department)
     
     # Upcoming Exams
     upcoming_exams = Exam.objects.filter(course__in=courses, status='Scheduled').order_by('date')
@@ -907,14 +899,13 @@ def student_dashboard(request):
     # Study Materials
     materials = StudyMaterial.objects.filter(course__in=courses, status='Approved').order_by('-uploaded_at')
 
-    context = {
-        'student': student,
-        'courses': courses,
-        'upcoming_exams': upcoming_exams,
-        'recent_results': recent_results,
-        'materials': materials,
-    }
-    return render(request, 'student_dashboard.html', context)
+    return render(request, "student_dashboard.html", {
+        "student": student,
+        "courses": courses,
+        "upcoming_exams": upcoming_exams,
+        "recent_results": recent_results,
+        "materials": materials,
+    })
 
 from django.http import JsonResponse
 import json
@@ -930,16 +921,31 @@ def submit_ai_query(request):
         try:
             data = json.loads(request.body)
             query = data.get('query')
-            course_id = data.get('course_id') # Optional context
+            course_id = data.get('course_id')
+
+            student_id = request.session.get("student_id")
+            if not student_id:
+                 return JsonResponse({'error': 'Unauthorized'}, status=401)
             
+            try:
+                student = Student.objects.get(id=student_id)
+            except Student.DoesNotExist:
+                 return JsonResponse({'error': 'Student not found'}, status=404)
+
+            if not query:
+                return JsonResponse({'error': 'No query provided'}, status=400)
+                
             # Retrieve context material
             context_text = ""
             course = None
             if course_id:
-                course = Course.objects.get(id=course_id)
-                # Naive context: aggregate titles of materials
-                materials = StudyMaterial.objects.filter(course=course, status='Approved')
-                context_text = " ".join([m.title for m in materials])
+                try:
+                    course = Course.objects.get(id=course_id)
+                    # Naive context: aggregate titles of materials
+                    materials = StudyMaterial.objects.filter(course=course, status='Approved')
+                    context_text = " ".join([m.title for m in materials])
+                except Course.DoesNotExist:
+                    pass # Course not found, proceed without course-specific context
 
             # Use SupportService
             support_bot = SupportService.get_instance()
@@ -964,155 +970,151 @@ def submit_ai_query(request):
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 def exam_interface(request, exam_id):
-    if not request.session.get('role') == 'student':
-        return redirect('login')
-        
-    exam = Exam.objects.get(id=exam_id)
-    
-    # Check if user already submitted this exam
-    if Result.objects.filter(exam=exam, student=request.user).exists():
-        messages.warning(request, "You have already attempted this exam.")
-        return redirect('student_dashboard')
+    if request.session.get("role") != "student":
+        return redirect("login")
 
-    # Fetch generated questions
+    student_id = request.session.get("student_id")
+    if not student_id:
+        return redirect("login")
+
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        return redirect("login")
+
+    exam = Exam.objects.get(id=exam_id)
     questions = Question.objects.filter(exam=exam)
 
-    context = {
-        'exam': exam,
-        'student': request.user,
-        'questions': questions
-    }
-    return render(request, 'exam_interface.html', context)
+    return render(request, "exam_interface.html", {
+        "exam": exam,
+        "questions": questions,
+        "student": student
+    })
 
 def submit_exam(request, exam_id):
-    if request.method == 'POST':
-        exam = Exam.objects.get(id=exam_id)
-        
-        # Check if already submitted
-        if Result.objects.filter(exam=exam, student=request.user).exists():
-             messages.error(request, "You have already submitted this exam.")
-             return redirect('student_dashboard')
-        # In a real app, retrieve student answers from POST data
-        # answers = json.loads(request.body).get('answers')
-        
-        result_obj = Result.objects.create(
-            exam=exam,
-            student=request.user,
-            score=0, # Will update after grading
-            is_pass=False,
-            ai_feedback="", 
-            status='Pending'
+    if request.method != "POST":
+        return redirect("student_dashboard")
+
+    student_id = request.session.get("student_id")
+    if not student_id:
+        return redirect("login")
+
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        return redirect("login")
+
+    exam = Exam.objects.get(id=exam_id)
+
+    if Result.objects.filter(exam=exam, student=student).exists():
+        messages.warning(request, "Already submitted")
+        return redirect("student_dashboard")
+
+    result = Result.objects.create(
+        exam=exam,
+        student=student,
+        score=0,
+        status="Pending"
+    )
+
+    grader = GradingService.get_instance()
+    total_score = 0
+
+    for q in Question.objects.filter(exam=exam):
+        ans = request.POST.get(f"question_{q.id}", "")
+        grade = grader.grade_submission(q.question_text, ans, q.answer)
+
+        StudentAnswer.objects.create(
+            result=result,
+            question=q,
+            student_answer=ans,
+            ai_score=grade["score"],
+            feedback=grade["feedback"]
         )
 
-        total_score = 0
-        feedback_summary = []
-        grader = GradingService.get_instance()
-        
-        # Iterate through exam questions
-        questions = Question.objects.filter(exam=exam)
-        for question in questions:
-            # Retrieve answer from POST data (assuming input name is question_{id})
-            student_response = request.POST.get(f'question_{question.id}')
-            
-            if not student_response:
-                student_response = "No Answer"
+        total_score += grade["score"]
 
-            grading_result = {'score': 0, 'feedback': 'No answer provided'}
-            
-            # Grade based on type
-            if question.question_type == 'MCQ':
-                if student_response.strip().lower() == question.answer.strip().lower():
-                    grading_result = {'score': 1, 'feedback': 'Correct'} # Simple 1 point per MCQ
-                else:
-                    grading_result = {'score': 0, 'feedback': 'Incorrect'}
-            else:
-                 # AI Grading for Essay/SAQ
-                 grading_result = grader.grade_submission(question.question_text, student_response, question.answer)
+    result.score = total_score
+    result.is_pass = total_score >= (len(Question.objects.filter(exam=exam)) * 0.4)
+    result.status = "Completed"
+    result.save()
 
-            total_score += grading_result['score']
-            feedback_summary.append(f"Q: {grading_result['feedback']}")
+    return redirect("student_dashboard")
 
-            # Save StudentAnswer
-            StudentAnswer.objects.create(
-                result=result_obj,
-                question=question,
-                question_text=question.question_text,
-                student_answer=student_response,
-                ai_score=grading_result['score'],
-                feedback=grading_result['feedback']
-            )
 
-        # Update Result
-        result_obj.score = total_score
-        result_obj.is_pass = total_score >= (questions.count() * 0.4) # 40% pass mark for example
-        result_obj.ai_feedback = " | ".join(feedback_summary)
-        result_obj.save()
-
-        messages.success(request, "Exam submitted successfully! AI Grading in progress...")
-        return redirect('student_dashboard')
-    return redirect('student_dashboard')
+# ===================================================
+# PROCTORING ENDPOINT (IMPORTANT)
+# ===================================================
 
 @csrf_exempt
-def proctoring_stream_endpoint(request):
+def proctoring_stream(request):
     """
-    Endpoint to receive video frames for proctoring analysis.
-    Expected: POST with frame data.
+    Receives webcam frames and returns calibration / proctoring status.
     """
-    if request.method == 'POST':
-        try:
-            # frame_data = request.POST.get('frame') or key in json
-            # For simplicity, just return the mock result
-            proctor = ProctoringService.get_instance()
-            analysis = proctor.process_frame("dummy_frame_data")
-            
-            # If violations found, log them
-            # ProctoringLog.objects.create(...)
-            
-            return JsonResponse(analysis)
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-    return JsonResponse({'status': 'listening'})
-    return redirect('principal_dashboard')
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
+
+    try:
+        # Lazy load to avoid OOM on import
+        proctoring_engine = ProctoringService.get_instance()
+        
+        payload = json.loads(request.body)
+        frame_data = payload.get("image")
+
+        if not frame_data:
+            return JsonResponse({"status": "error", "message": "No image data"})
+
+        result = proctoring_engine.process_frame(frame_data)
+        return JsonResponse(result)
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
 
 
 # --- Admin Dashboard Views ---
 
 def admin_dashboard(request):
-    # Ensure user is a superuser/admin
-    if not request.user.is_superuser:
-        messages.error(request, "Access denied. Admin only.")
-        return redirect('login')
+    try:
+        # Ensure user is a superuser/admin
+        if not request.user.is_superuser:
+            messages.error(request, "Access denied. Admin only.")
+            return redirect('login')
 
-    # 1. User Overview
-    total_students = User.objects.filter(is_superuser=False).count()
-    total_teachers = Teacher.objects.count()
-    total_hods = HOD.objects.count()
-    total_principals = Principal.objects.count()
-    
-    # 2. Key System Metrics
-    total_courses = Course.objects.count()
-    total_exams = Exam.objects.count()
-    
-    # 3. Recent Registrations (Combined)
-    # This is a bit complex since users are in different tables. 
-    # For now, we'll just show recent User (student) registrations as a proxy or fetch separately.
-    recent_students = User.objects.order_by('-created_at')[:5]
-    
-    # 4. Pending Approvals (Teachers)
-    pending_teachers_count = Teacher.objects.filter(status=False).count()
+        print("DEBUG: Admin Dashboard - User authorized")
 
-    context = {
-        'total_students': total_students,
-        'total_teachers': total_teachers,
-        'total_hods': total_hods,
-        'total_principals': total_principals,
-        'total_courses': total_courses,
-        'total_exams': total_exams,
-        'recent_students': recent_students,
-        'pending_teachers_count': pending_teachers_count,
-    }
+        # 1. User Overview
+        total_students = Student.objects.count()
+        total_teachers = Teacher.objects.count()
+        total_hods = HOD.objects.count()
+        total_principals = Principal.objects.count()
+        
+        # 2. Key System Metrics
+        total_courses = Course.objects.count()
+        total_exams = Exam.objects.count()
+        
+        # 3. Recent Registrations (Combined)
+        recent_students = Student.objects.order_by('-created_at')[:5]
+        
+        # 4. Pending Approvals (Teachers)
+        pending_teachers_count = Teacher.objects.filter(status=False).count()
 
-    return render(request, 'admin_dashboard.html', context)
+        print("DEBUG: Admin Context Prepared")
+
+        context = {
+            'total_students': total_students,
+            'total_teachers': total_teachers,
+            'total_hods': total_hods,
+            'total_principals': total_principals,
+            'total_courses': total_courses,
+            'total_exams': total_exams,
+            'recent_students': recent_students,
+            'pending_teachers_count': pending_teachers_count,
+        }
+
+        return render(request, 'admin_dashboard.html', context)
+    except Exception as e:
+        print(f"ERROR in admin_dashboard: {e}")
+        return HttpResponse(f"Error loading dashboard: {e}")
 
 def admin_user_list(request, role):
     if not request.user.is_superuser:
@@ -1123,7 +1125,7 @@ def admin_user_list(request, role):
     role_name = ""
 
     if role == 'student':
-        users = User.objects.filter(is_superuser=False)
+        users = Student.objects.all()
         role_name = "Students"
     elif role == 'teacher':
         users = Teacher.objects.all()

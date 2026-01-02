@@ -48,7 +48,7 @@ urlpatterns = [
     path('student/ai-query/', views.submit_ai_query, name='submit_ai_query'),
     path('student/exam/<int:exam_id>/', views.exam_interface, name='exam_interface'),
     path('student/exam/<int:exam_id>/submit/', views.submit_exam, name='submit_exam'),
-    path('student/proctoring/stream/', views.proctoring_stream_endpoint, name='proctoring_stream'),
+    path('student/proctoring/stream/', views.proctoring_stream, name='proctoring_stream'),
 
     # --- Principal Interface ---
     path('principal/dashboard/', views.principal_dashboard, name='principal_dashboard'),
