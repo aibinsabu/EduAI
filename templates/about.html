@@ -1,266 +1,507 @@
 {% load static %}
-{% include 'header.html' %}
-            <div class="container-xxl py-5 bg-primary hero-header mb-5">
-                <div class="container my-5 py-5 px-lg-5">
-                    <div class="row g-5 py-5">
-                        <div class="col-12 text-center">
-                            <h1 class="text-white animated zoomIn">About Us</h1>
-                            <hr class="bg-white mx-auto mt-0" style="width: 90px;">
-                            <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb justify-content-center">
-                                    <li class="breadcrumb-item"><a class="text-white" href="#">Home</a></li>
-                                    <li class="breadcrumb-item"><a class="text-white" href="#">Pages</a></li>
-                                    <li class="breadcrumb-item text-white active" aria-current="page">About</li>
-                                </ol>
-                            </nav>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="utf-8">
+    <title>About Us - EduQuality AI</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        },
+                        dark: {
+                            800: '#1e1e2e',
+                            900: '#11111b',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'blob': 'blob 7s infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+            background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.15), transparent 50%),
+                radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.15), transparent 50%);
+            pointer-events: none;
+        }
+
+        .glass-nav {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        }
+
+        .mesh-blob {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.4;
+            z-index: -1;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body class="antialiased" x-data="{ mobileMenuOpen: false, scrolled: false }"
+    @scroll.window="scrolled = (window.pageYOffset > 20)">
+
+    <!-- Background Ambience -->
+    <div class="gradient-bg"></div>
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div class="mesh-blob bg-blue-500 w-96 h-96 top-0 left-0 animate-blob"></div>
+        <div class="mesh-blob bg-purple-500 w-96 h-96 bottom-0 right-0 animate-blob animation-delay-2000"></div>
+        <div
+            class="mesh-blob bg-cyan-500 w-80 h-80 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-blob animation-delay-4000">
         </div>
-        <!-- Navbar & Hero End -->
-
-
-        <!-- Full Screen Search Start -->
-        <div class="modal fade" id="searchModal" tabindex="-1">
-            <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content" style="background: rgba(29, 29, 39, 0.7);">
-                    <div class="modal-header border-0">
-                        <button type="button" class="btn bg-white btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body d-flex align-items-center justify-content-center">
-                        <div class="input-group" style="max-width: 600px;">
-                            <input type="text" class="form-control bg-transparent border-light p-3" placeholder="Type search keyword">
-                            <button class="btn btn-light px-4"><i class="bi bi-search"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Full Screen Search End -->
-
-
-        <!-- About Start -->
-        <div class="container-xxl py-5">
-            <div class="container px-lg-5">
-                <div class="row g-5">
-                    <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
-                        <div class="section-title position-relative mb-4 pb-2">
-                            <h6 class="position-relative text-primary ps-4">About Us</h6>
-                            <h2 class="mt-2">The best SEO solution with 10 years of experience</h2>
-                        </div>
-                        <p class="mb-4">Tempor erat elitr rebum at clita. Diam dolor diam ipsum et tempor sit. Aliqu diam amet diam et eos labore. Clita erat ipsum et lorem et sit, sed stet no labore lorem sit. Sanctus clita duo justo et tempor eirmod magna dolore erat amet</p>
-                        <div class="row g-3">
-                            <div class="col-sm-6">
-                                <h6 class="mb-3"><i class="fa fa-check text-primary me-2"></i>Award Winning</h6>
-                                <h6 class="mb-0"><i class="fa fa-check text-primary me-2"></i>Professional Staff</h6>
-                            </div>
-                            <div class="col-sm-6">
-                                <h6 class="mb-3"><i class="fa fa-check text-primary me-2"></i>24/7 Support</h6>
-                                <h6 class="mb-0"><i class="fa fa-check text-primary me-2"></i>Fair Prices</h6>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center mt-4">
-                            <a class="btn btn-primary rounded-pill px-4 me-3" href="">Read More</a>
-                            <a class="btn btn-outline-primary btn-square me-3" href=""><i class="fab fa-facebook-f"></i></a>
-                            <a class="btn btn-outline-primary btn-square me-3" href=""><i class="fab fa-twitter"></i></a>
-                            <a class="btn btn-outline-primary btn-square me-3" href=""><i class="fab fa-instagram"></i></a>
-                            <a class="btn btn-outline-primary btn-square" href=""><i class="fab fa-linkedin-in"></i></a>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <img class="img-fluid wow zoomIn" data-wow-delay="0.5s" src="{% static 'img/about.jpg' %}">
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- About End -->
-
-
-        <!-- Newsletter Start -->
-        <div class="container-xxl bg-primary newsletter my-5 wow fadeInUp" data-wow-delay="0.1s">
-            <div class="container px-lg-5">
-                <div class="row align-items-center" style="height: 250px;">
-                    <div class="col-12 col-md-6">
-                        <h3 class="text-white">Ready to get started</h3>
-                        <small class="text-white">Diam elitr est dolore at sanctus nonumy.</small>
-                        <div class="position-relative w-100 mt-3">
-                            <input class="form-control border-0 rounded-pill w-100 ps-4 pe-5" type="text" placeholder="Enter Your Email" style="height: 48px;">
-                            <button type="button" class="btn shadow-none position-absolute top-0 end-0 mt-1 me-2"><i class="fa fa-paper-plane text-primary fs-4"></i></button>
-                        </div>
-                    </div>
-                    <div class="col-md-6 text-center mb-n5 d-none d-md-block">
-                        <img class="img-fluid mt-5" style="height: 250px;" src="{% static 'img/newsletter.png' %}">
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Newsletter End -->
-
-
-        <!-- Team Start -->
-        <div class="container-xxl py-5">
-            <div class="container px-lg-5">
-                <div class="section-title position-relative text-center mb-5 pb-2 wow fadeInUp" data-wow-delay="0.1s">
-                    <h6 class="position-relative d-inline text-primary ps-4">Our Team</h6>
-                    <h2 class="mt-2">Meet Our Team Members</h2>
-                </div>
-                <div class="row g-4">
-                    <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.1s">
-                        <div class="team-item">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0 d-flex flex-column align-items-center mt-4 pt-5" style="width: 75px;">
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-facebook-f"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-twitter"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-instagram"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-linkedin-in"></i></a>
-                                </div>
-                                <img class="img-fluid rounded w-100" src="{% static 'img/team-1.jpg' %}" alt="">
-                            </div>
-                            <div class="px-4 py-3">
-                                <h5 class="fw-bold m-0">Jhon Doe</h5>
-                                <small>CEO</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.3s">
-                        <div class="team-item">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0 d-flex flex-column align-items-center mt-4 pt-5" style="width: 75px;">
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-facebook-f"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-twitter"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-instagram"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-linkedin-in"></i></a>
-                                </div>
-                                <img class="img-fluid rounded w-100" src="{% static 'img/team-2.jpg' %}" alt="">
-                            </div>
-                            <div class="px-4 py-3">
-                                <h5 class="fw-bold m-0">Emma William</h5>
-                                <small>Manager</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4 wow fadeInUp" data-wow-delay="0.6s">
-                        <div class="team-item">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0 d-flex flex-column align-items-center mt-4 pt-5" style="width: 75px;">
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-facebook-f"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-twitter"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-instagram"></i></a>
-                                    <a class="btn btn-square text-primary bg-white my-1" href=""><i class="fab fa-linkedin-in"></i></a>
-                                </div>
-                                <img class="img-fluid rounded w-100" src="{% static 'img/team-3.jpg' %}" alt="">
-                            </div>
-                            <div class="px-4 py-3">
-                                <h5 class="fw-bold m-0">Noah Michael</h5>
-                                <small>Designer</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Team End -->
-        
-
-        <!-- Footer Start -->
-        <div class="container-fluid bg-primary text-light footer mt-5 pt-5 wow fadeIn" data-wow-delay="0.1s">
-            <div class="container py-5 px-lg-5">
-                <div class="row g-5">
-                    <div class="col-md-6 col-lg-3">
-                        <h5 class="text-white mb-4">Get In Touch</h5>
-                        <p><i class="fa fa-map-marker-alt me-3"></i>123 Street, New York, USA</p>
-                        <p><i class="fa fa-phone-alt me-3"></i>+012 345 67890</p>
-                        <p><i class="fa fa-envelope me-3"></i>info@example.com</p>
-                        <div class="d-flex pt-2">
-                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-twitter"></i></a>
-                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-facebook-f"></i></a>
-                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-youtube"></i></a>
-                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-instagram"></i></a>
-                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-linkedin-in"></i></a>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <h5 class="text-white mb-4">Popular Link</h5>
-                        <a class="btn btn-link" href="">About Us</a>
-                        <a class="btn btn-link" href="">Contact Us</a>
-                        <a class="btn btn-link" href="">Privacy Policy</a>
-                        <a class="btn btn-link" href="">Terms & Condition</a>
-                        <a class="btn btn-link" href="">Career</a>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <h5 class="text-white mb-4">Project Gallery</h5>
-                        <div class="row g-2">
-                            <div class="col-4">
-                                <img class="img-fluid" src="{% static 'img/portfolio-1.jpg' %}" alt="Image">
-                            </div>
-                            <div class="col-4">
-                                <img class="img-fluid" src="{% static 'img/portfolio-2.jpg' %}" alt="Image">
-                            </div>
-                            <div class="col-4">
-                                <img class="img-fluid" src="{% static 'img/portfolio-3.jpg' %}" alt="Image">
-                            </div>
-                            <div class="col-4">
-                                <img class="img-fluid" src="{% static 'img/portfolio-4.jpg' %}" alt="Image">
-                            </div>
-                            <div class="col-4">
-                                <img class="img-fluid" src="{% static 'img/portfolio-5.jpg' %}" alt="Image">
-                            </div>
-                            <div class="col-4">
-                                <img class="img-fluid" src="{% static 'img/portfolio-6.jpg' %}" alt="Image">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <h5 class="text-white mb-4">Newsletter</h5>
-                        <p>Lorem ipsum dolor sit amet elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non vulpu</p>
-                        <div class="position-relative w-100 mt-3">
-                            <input class="form-control border-0 rounded-pill w-100 ps-4 pe-5" type="text" placeholder="Your Email" style="height: 48px;">
-                            <button type="button" class="btn shadow-none position-absolute top-0 end-0 mt-1 me-2"><i class="fa fa-paper-plane text-primary fs-4"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="container px-lg-5">
-                <div class="copyright">
-                    <div class="row">
-                        <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                            &copy; <a class="border-bottom" href="#">Your Site Name</a>, All Right Reserved. 
-							
-							<!--/*** This template is free as long as you keep the footer author’s credit link/attribution link/backlink. If you'd like to use the template without the footer author’s credit link/attribution link/backlink, you can purchase the Credit Removal License from "https://htmlcodex.com/credit-removal". Thank you for your support. ***/-->
-							Designed By <a class="border-bottom" href="https://htmlcodex.com">HTML Codex</a>
-                        </div>
-                        <div class="col-md-6 text-center text-md-end">
-                            <div class="footer-menu">
-                                <a href="">Home</a>
-                                <a href="">Cookies</a>
-                                <a href="">Help</a>
-                                <a href="">FQAs</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Footer End -->
-
-
-        <!-- Back to Top -->
-        <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top pt-2"><i class="bi bi-arrow-up"></i></a>
     </div>
 
-    <!-- JavaScript Libraries -->
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'lib/wow/wow.min.js' %}"></script>
-    <script src="{% static 'lib/easing/easing.min.js' %}"></script>
-    <script src="{% static 'lib/waypoints/waypoints.min.js' %}"></script>
-    <script src="{% static 'lib/owlcarousel/owl.carousel.min.js' %}"></script>
-    <script src="{% static 'lib/isotope/isotope.pkgd.min.js' %}"></script>
-    <script src="{% static 'lib/lightbox/js/lightbox.min.js' %}"></script>
+    <!-- Sticky Navbar -->
+    <nav :class="{ 'glass-nav shadow-lg': scrolled, 'bg-transparent py-6': !scrolled }"
+        class="fixed w-full z-50 transition-all duration-300 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <!-- Logo -->
+            <a href="{% url 'index' %}" class="flex items-center gap-3 group">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300">
+                    <i class="fas fa-cube text-white text-lg"></i>
+                </div>
+                <span
+                    class="text-xl font-bold tracking-tight text-white group-hover:text-brand-400 transition-colors">EduQuality
+                    AI</span>
+            </a>
 
-    <!-- Template Javascript -->
-    <script src="{% static 'js/main.js' %}"></script>
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="{% url 'index' %}"
+                    class="text-sm font-medium text-gray-300 hover:text-white transition-colors">Home</a>
+                <a href="#features"
+                    class="text-sm font-medium text-gray-300 hover:text-white transition-colors">Features</a>
+                <a href="{% url 'about' %}" class="text-sm font-bold text-brand-400 transition-colors">About</a>
+                <a href="#testimonials"
+                    class="text-sm font-medium text-gray-300 hover:text-white transition-colors">Testimonials</a>
+
+                {% if request.session.user_id or user.is_authenticated %}
+                <a href="{% url 'logout' %}"
+                    class="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all backdrop-blur-md border border-white/10">
+                    Logout
+                </a>
+                {% else %}
+                <!-- Auth Dropdown -->
+                <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
+                    <button
+                        class="px-6 py-2.5 rounded-full bg-brand-500 hover:bg-brand-400 text-white text-sm font-bold shadow-lg shadow-blue-500/25 transition-all flex items-center gap-2">
+                        Get Started <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 translate-y-2"
+                        x-transition:enter-end="opacity-100 translate-y-0" class="absolute right-0 top-full pt-2 w-56">
+                        <div class="glass-card rounded-2xl p-2 shadow-xl flex flex-col gap-1">
+                            <a href="{% url 'login' %}"
+                                class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors group">
+                                <div
+                                    class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition">
+                                    <i class="fas fa-sign-in-alt text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-semibold text-white">Login</div>
+                                    <div class="text-[10px] text-gray-400">Access your account</div>
+                                </div>
+                            </a>
+                            <div class="h-px bg-white/10 my-1"></div>
+                            <span
+                                class="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider py-1">Register
+                                As</span>
+                            <a href="{% url 'student_registration' %}"
+                                class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/10 transition">Student</a>
+                            <a href="{% url 'teacher_registration' %}"
+                                class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/10 transition">Teacher</a>
+                            <a href="{% url 'hod_registration' %}"
+                                class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/10 transition">HOD</a>
+                            <a href="{% url 'principle_registration' %}"
+                                class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/10 transition">Principal</a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="md:hidden text-white text-xl" @click="mobileMenuOpen = !mobileMenuOpen">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="relative pt-32 pb-16 md:pt-48 md:pb-24 px-6 text-center">
+        <h1 class="text-5xl md:text-7xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-blue-200 animate-float"
+            style="animation-duration: 4s;">
+            About Us
+        </h1>
+        <div class="flex items-center justify-center gap-2 text-sm text-gray-400">
+            <a href="{% url 'index' %}" class="hover:text-white transition">Home</a>
+            <i class="fas fa-chevron-right text-xs"></i>
+            <span class="text-brand-400">About</span>
+        </div>
+    </div>
+
+    <!-- About Content -->
+    <section class="py-12 px-6">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+            <!-- Left Column: Content -->
+            <div class="order-2 lg:order-1 space-y-8">
+                <div class="glass-card p-8 rounded-3xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i class="fas fa-rocket text-9xl text-white"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <h6 class="text-brand-400 font-bold uppercase tracking-wider mb-2">Who We Are</h6>
+                        <h2 class="text-3xl font-bold mb-6">Revolutionizing Education Through Innovation</h2>
+                        <p class="text-gray-300 leading-relaxed mb-6">
+                            Tempor erat elitr rebum at clita. Diam dolor diam ipsum et tempor sit. Aliqu diam amet diam
+                            et eos labore. Clita erat ipsum et lorem et sit, sed stet no labore lorem sit. Sanctus clita
+                            duo justo et tempor eirmod magna dolore erat amet.
+                        </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400">
+                                    <i class="fas fa-trophy"></i>
+                                </div>
+                                <span class="font-medium text-gray-200">Award Winning</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <span class="font-medium text-gray-200">Professional Staff</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400">
+                                    <i class="fas fa-headset"></i>
+                                </div>
+                                <span class="font-medium text-gray-200">24/7 Support</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400">
+                                    <i class="fas fa-tag"></i>
+                                </div>
+                                <span class="font-medium text-gray-200">Fair Prices</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 flex gap-4">
+                            <a href="#"
+                                class="px-6 py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-medium shadow-lg shadow-brand-500/20 transition-all">Read
+                                More</a>
+                            <div class="flex gap-2">
+                                <a href="#"
+                                    class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:bg-white hover:text-blue-600 transition"><i
+                                        class="fab fa-facebook-f"></i></a>
+                                <a href="#"
+                                    class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:bg-white hover:text-blue-400 transition"><i
+                                        class="fab fa-twitter"></i></a>
+                                <a href="#"
+                                    class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:bg-white hover:text-pink-600 transition"><i
+                                        class="fab fa-instagram"></i></a>
+                                <a href="#"
+                                    class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-gray-400 hover:bg-white hover:text-blue-700 transition"><i
+                                        class="fab fa-linkedin-in"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Image -->
+            <div class="order-1 lg:order-2 relative">
+                <div
+                    class="glass-card p-3 rounded-3xl transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                    <img src="{% static 'img/about.jpg' %}" alt="About"
+                        class="rounded-2xl w-full object-cover h-[500px]">
+                </div>
+                <!-- Floating Badge -->
+                <div class="absolute -bottom-6 -left-6 glass-card p-6 rounded-2xl shadow-xl animate-float"
+                    style="animation-duration: 5s;">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-xl">
+                            10+
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold">Years</div>
+                            <div class="text-xs text-gray-400">Of Experience</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="py-24 px-6 relative">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h6 class="text-brand-400 font-bold uppercase tracking-widest mb-2">Our Team</h6>
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">Meet Our Team Members</h2>
+                <div class="w-20 h-1 bg-brand-500 mx-auto rounded-full"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Team Member 1 -->
+                <div class="glass-card p-4 rounded-3xl group relative overflow-hidden">
+                    <div
+                        class="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-brand-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+
+                    <div class="relative overflow-hidden rounded-2xl mb-6">
+                        <img src="{% static 'img/team-1.jpg' %}" alt="Team 1"
+                            class="w-full h-80 object-cover transform group-hover:scale-110 transition-transform duration-500">
+                        <!-- Social Overlay -->
+                        <div
+                            class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-facebook-f"></i></a>
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-twitter"></i></a>
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-instagram"></i></a>
+                        </div>
+                    </div>
+
+                    <div class="text-center pb-2">
+                        <h4 class="text-xl font-bold mb-1">Jhon Doe</h4>
+                        <p class="text-brand-400 text-sm font-medium">CEO</p>
+                    </div>
+                </div>
+
+                <!-- Team Member 2 -->
+                <div class="glass-card p-4 rounded-3xl group relative overflow-hidden">
+                    <div
+                        class="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="relative overflow-hidden rounded-2xl mb-6">
+                        <img src="{% static 'img/team-2.jpg' %}" alt="Team 2"
+                            class="w-full h-80 object-cover transform group-hover:scale-110 transition-transform duration-500">
+                        <div
+                            class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-facebook-f"></i></a>
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-twitter"></i></a>
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-instagram"></i></a>
+                        </div>
+                    </div>
+                    <div class="text-center pb-2">
+                        <h4 class="text-xl font-bold mb-1">Emma William</h4>
+                        <p class="text-brand-400 text-sm font-medium">Manager</p>
+                    </div>
+                </div>
+
+                <!-- Team Member 3 -->
+                <div class="glass-card p-4 rounded-3xl group relative overflow-hidden">
+                    <div
+                        class="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-pink-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="relative overflow-hidden rounded-2xl mb-6">
+                        <img src="{% static 'img/team-3.jpg' %}" alt="Team 3"
+                            class="w-full h-80 object-cover transform group-hover:scale-110 transition-transform duration-500">
+                        <div
+                            class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-facebook-f"></i></a>
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-twitter"></i></a>
+                            <a href="#"
+                                class="w-10 h-10 rounded-full bg-white text-brand-500 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i
+                                    class="fab fa-instagram"></i></a>
+                        </div>
+                    </div>
+                    <div class="text-center pb-2">
+                        <h4 class="text-xl font-bold mb-1">Noah Michael</h4>
+                        <p class="text-brand-400 text-sm font-medium">Designer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter Section -->
+    <section class="py-12 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="glass-card rounded-3xl p-8 md:p-12 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl -mr-12 -mt-12"></div>
+                <div class="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -ml-12 -mb-12">
+                </div>
+
+                <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-4">Ready to get started?</h2>
+                        <p class="text-gray-400 mb-0">Diam elitr est dolore at sanctus nonumy. Subscribe to our
+                            newsletter for latest updates.</p>
+                    </div>
+                    <div>
+                        <form class="relative">
+                            <input type="email" placeholder="Enter Your Email"
+                                class="w-full bg-black/20 border border-white/10 rounded-full py-4 pl-6 pr-16 text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all">
+                            <button type="button"
+                                class="absolute right-2 top-2 bottom-2 w-12 h-12 bg-brand-500 hover:bg-brand-400 rounded-full flex items-center justify-center text-white shadow-lg transition-transform hover:scale-105 active:scale-95">
+                                <i class="fa fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="glass-card border-t border-white/10 mt-12">
+        <div class="max-w-7xl mx-auto px-6 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-1">
+                    <a href="#" class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white">
+                            <i class="fas fa-cube text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold text-white">EduQuality AI</span>
+                    </a>
+                    <p class="text-gray-500 text-sm">
+                        123 Street, New York, USA<br>
+                        info@example.com<br>
+                        +012 345 67890
+                    </p>
+                </div>
+
+                <div>
+                    <h5 class="text-white font-bold mb-4">Quick Links</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="{% url 'about' %}" class="hover:text-brand-400 transition">About Us</a></li>
+                        <li><a href="#" class="hover:text-brand-400 transition">Contact Us</a></li>
+                        <li><a href="#" class="hover:text-brand-400 transition">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-brand-400 transition">Terms & Condition</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="text-white font-bold mb-4">Portals</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="{% url 'admin_dashboard' %}" class="hover:text-brand-400 transition">Admin</a></li>
+                        <li><a href="{% url 'principal_dashboard' %}"
+                                class="hover:text-brand-400 transition">Principal</a></li>
+                        <li><a href="{% url 'teacher_dashboard' %}" class="hover:text-brand-400 transition">Teacher</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="text-white font-bold mb-4">Project Gallery</h5>
+                    <div class="grid grid-cols-3 gap-2">
+                        <img class="rounded-lg opacity-70 hover:opacity-100 transition cursor-pointer"
+                            src="{% static 'img/portfolio-1.jpg' %}" alt="">
+                        <img class="rounded-lg opacity-70 hover:opacity-100 transition cursor-pointer"
+                            src="{% static 'img/portfolio-2.jpg' %}" alt="">
+                        <img class="rounded-lg opacity-70 hover:opacity-100 transition cursor-pointer"
+                            src="{% static 'img/portfolio-3.jpg' %}" alt="">
+                        <img class="rounded-lg opacity-70 hover:opacity-100 transition cursor-pointer"
+                            src="{% static 'img/portfolio-4.jpg' %}" alt="">
+                        <img class="rounded-lg opacity-70 hover:opacity-100 transition cursor-pointer"
+                            src="{% static 'img/portfolio-5.jpg' %}" alt="">
+                        <img class="rounded-lg opacity-70 hover:opacity-100 transition cursor-pointer"
+                            src="{% static 'img/portfolio-6.jpg' %}" alt="">
+                    </div>
+                </div>
+            </div>
+            <div
+                class="border-t border-white/5 mt-12 pt-8 text-center text-xs text-gray-600 flex flex-col md:flex-row justify-between items-center">
+                <p>&copy; 2026 EduQuality AI. All rights reserved.</p>
+                <p class="mt-2 md:mt-0">Designed By <a href="#" class="text-brand-400 hover:underline">HTML Codex</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
 </body>
 
 </html>

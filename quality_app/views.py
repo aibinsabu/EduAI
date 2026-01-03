@@ -890,11 +890,17 @@ def student_dashboard(request):
         # Using icontains to handle cases like 'cs' vs 'CSE' vs 'Computer Science' more gracefully
         courses = Course.objects.filter(department__icontains=student.department)
     
-    # Upcoming Exams
-    upcoming_exams = Exam.objects.filter(course__in=courses, status='Scheduled').order_by('date')
+    # Taken Exams IDs
+    taken_exam_ids = Result.objects.filter(student=student).values_list('exam_id', flat=True)
+
+    # Upcoming Exams (Excluding taken ones)
+    upcoming_exams = Exam.objects.filter(course__in=courses, status='Scheduled').exclude(id__in=taken_exam_ids).order_by('date')
     
-    # Recent Results
-    recent_results = Result.objects.filter(student=student, status='Released').order_by('-created_at')[:5]
+    # Completed Exams (All history)
+    completed_exams = Result.objects.filter(student=student).order_by('-created_at')
+
+    # Completed Exams Count
+    completed_exams_count = completed_exams.count()
     
     # Study Materials
     materials = StudyMaterial.objects.filter(course__in=courses, status='Approved').order_by('-uploaded_at')
@@ -903,7 +909,8 @@ def student_dashboard(request):
         "student": student,
         "courses": courses,
         "upcoming_exams": upcoming_exams,
-        "recent_results": recent_results,
+        "completed_exams": completed_exams,
+        "completed_exams_count": completed_exams_count,
         "materials": materials,
     })
 

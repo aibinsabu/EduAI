@@ -101,7 +101,7 @@
                         </div>
                         <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Performance</span>
                     </div>
-                    <h3 class="text-3xl font-bold text-gray-800">{{ recent_results|length }}</h3>
+                    <h3 class="text-3xl font-bold text-gray-800">{{ completed_exams_count }}</h3>
                     <p class="text-sm text-gray-500 font-medium">Completed Exams</p>
                 </div>
             </div>
@@ -284,7 +284,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        {% for result in recent_results %}
+                        {% for result in completed_exams %}
                         <tr class="hover:bg-brand-50/30 transition duration-150">
                             <td class="px-6 py-4">
                                 <p class="font-semibold text-gray-900">{{ result.exam.title }}</p>
@@ -292,13 +292,24 @@
                             </td>
                             <td class="px-6 py-4 text-gray-500">{{ result.created_at|date:"M d, Y" }}</td>
                             <td class="px-6 py-4">
+                                {% if result.status == 'Pending' %}
+                                <span class="text-lg font-bold text-gray-400">
+                                    --
+                                </span>
+                                {% else %}
                                 <span
                                     class="text-lg font-bold {% if result.is_pass %}text-green-600{% else %}text-red-600{% endif %}">
                                     {{ result.score }}%
                                 </span>
+                                {% endif %}
                             </td>
                             <td class="px-6 py-4">
-                                {% if result.is_pass %}
+                                {% if result.status == 'Pending' %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                    Pending Grading
+                                </span>
+                                {% elif result.is_pass %}
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                                     Passed
