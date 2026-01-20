@@ -65,6 +65,14 @@ urlpatterns = [
     path('admin-dashboard/user/<str:role>/<int:user_id>/edit/', views.edit_user, name='admin_edit_user'),
     path('admin-dashboard/user/<str:role>/<int:user_id>/delete/', views.delete_user, name='admin_delete_user'),
     path('admin-dashboard/system-health/', views.system_health, name='system_health'),
+    
+    # --- Department Management ---
+    path('admin-dashboard/departments/', views.admin_department_list, name='admin_department_list'),
+    path('admin-dashboard/departments/add/', views.admin_add_department, name='admin_add_department'),
+    path('admin-dashboard/departments/<int:dept_id>/edit/', views.admin_edit_department, name='admin_edit_department'),
+    path('admin-dashboard/departments/<int:dept_id>/delete/', views.admin_delete_department, name='admin_delete_department'),
+    path('admin-dashboard/courses/', views.admin_course_list, name='admin_course_list'),
+    path('admin-dashboard/exams/', views.admin_exam_list, name='admin_exam_list'),
 ]
 
 # Force reload triggers

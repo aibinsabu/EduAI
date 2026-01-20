@@ -206,7 +206,8 @@ def hod_registration(request):
         messages.success(request, "Registration successful.")
         return redirect('hod_dashboard')
 
-    return render(request, 'hod-registration.html')
+    departments = Department.objects.all()
+    return render(request, 'hod-registration.html', {'departments': departments})
 
 
 def teacher_registration(request):
@@ -257,7 +258,8 @@ def teacher_registration(request):
         messages.success(request, "Registration successful.")
         return redirect('index')
 
-    return render(request, 'teacher-registration.html')
+    departments = Department.objects.all()
+    return render(request, 'teacher-registration.html', {'departments': departments})
 
 
 def student_registration(request):
@@ -311,7 +313,8 @@ def student_registration(request):
         messages.success(request, "Registration successful. Please login.")
         return redirect('login')
 
-    return render(request, 'student-registration.html')
+    departments = Department.objects.all()
+    return render(request, 'student-registration.html', {'departments': departments})
 
 
 # --- Teacher Dashboard Views ---
@@ -345,8 +348,9 @@ def teacher_courses(request):
     teacher_id = request.session.get('user_id')
     teacher = Teacher.objects.get(id=teacher_id)
     courses = Course.objects.filter(created_by=teacher)
+    departments = Department.objects.all()
     
-    return render(request, 'teacher_courses.html', {'courses': courses, 'teacher': teacher})
+    return render(request, 'teacher_courses.html', {'courses': courses, 'teacher': teacher, 'departments': departments})
 
 def create_course(request):
     if not request.session.get('role') == 'teacher':
@@ -701,7 +705,7 @@ def principal_dashboard(request):
     return render(request, 'principal_dashboard.html', context)
 
 def approve_teacher(request, teacher_id):
-    if not request.session.get('role') == 'principal':
+    if not (request.session.get('role') == 'principal' or request.user.is_superuser):
         return redirect('login')
         
     try:
@@ -712,19 +716,23 @@ def approve_teacher(request, teacher_id):
     except Teacher.DoesNotExist:
         messages.error(request, "Teacher not found.")
         
+    if request.user.is_superuser:
+        return redirect('admin_user_list', role='teacher')
     return redirect('principal_dashboard')
 
 def reject_teacher(request, teacher_id):
-    if not request.session.get('role') == 'principal':
+    if not (request.session.get('role') == 'principal' or request.user.is_superuser):
         return redirect('login')
         
     try:
         teacher = Teacher.objects.get(id=teacher_id)
-        teacher.delete() # Or set status to Rejected if field existed
+        teacher.delete() 
         messages.success(request, f"Teacher {teacher.first_name} rejected.")
     except Teacher.DoesNotExist:
         messages.error(request, "Teacher not found.")
         
+    if request.user.is_superuser:
+        return redirect('admin_user_list', role='teacher')
     return redirect('principal_dashboard')
         
     return redirect('principal_dashboard')
@@ -798,6 +806,11 @@ def generate_principal_report(request):
     # 1. Overview Stats
     total_students = User.objects.count()
     active_teachers = Teacher.objects.filter(status=True).count()
+
+    # ... (Rest of report generation logic would be here, assuming it continues)
+    # Since I cannot see the end of the file, I will append the new views after this block if this was the end, 
+    # but I should validly append to the true end of the file. 
+    # To be safe, I will read the end of the file first.
     total_exams = Exam.objects.count()
     
     data = [
@@ -1021,6 +1034,7 @@ def submit_exam(request, exam_id):
         exam=exam,
         student=student,
         score=0,
+        is_pass=False,
         status="Pending"
     )
 
@@ -1071,7 +1085,15 @@ def proctoring_stream(request):
         if not frame_data:
             return JsonResponse({"status": "error", "message": "No image data"})
 
-        result = proctoring_engine.process_frame(frame_data)
+        # Get calibration state from session or initialize default
+        calibration_state = request.session.get('proctoring_calibration_state', None)
+        # print(f"DEBUG: Calibration State: {calibration_state}")
+
+        result, new_state = proctoring_engine.process_frame(frame_data, calibration_state)
+        
+        # Save updated state to session
+        request.session['proctoring_calibration_state'] = new_state
+
         return JsonResponse(result)
 
     except Exception as e:
@@ -1130,21 +1152,22 @@ def admin_user_list(request, role):
 
     users = []
     role_name = ""
+    role = role.strip().lower()
 
     if role == 'student':
-        users = Student.objects.all()
+        users = Student.objects.all().order_by('-created_at')
         role_name = "Students"
     elif role == 'teacher':
-        users = Teacher.objects.all()
+        users = Teacher.objects.all().order_by('-created_at')
         role_name = "Teachers"
     elif role == 'hod':
-        users = HOD.objects.all()
+        users = HOD.objects.all().order_by('-created_at')
         role_name = "HODs"
     elif role == 'principal':
-        users = Principal.objects.all()
+        users = Principal.objects.all().order_by('-created_at')
         role_name = "Principals"
     else:
-        messages.error(request, "Invalid role.")
+        messages.error(request, f"Invalid user role: {role}")
         return redirect('admin_dashboard')
 
     context = {
@@ -1157,7 +1180,7 @@ def admin_user_list(request, role):
 
 def get_model_by_role(role):
     if role == 'student':
-        return User, 'student'
+        return Student, 'student'
     elif role == 'teacher':
         return Teacher, 'teacher'
     elif role == 'hod':
@@ -1171,6 +1194,7 @@ def edit_user(request, role, user_id):
         messages.error(request, "Access denied.")
         return redirect('login')
         
+    role = role.strip().lower()
     Model, _ = get_model_by_role(role)
     if not Model:
         messages.error(request, "Invalid role.")
@@ -1203,6 +1227,7 @@ def delete_user(request, role, user_id):
         messages.error(request, "Access denied.")
         return redirect('login')
         
+    role = role.strip().lower()
     Model, _ = get_model_by_role(role)
     if not Model:
         messages.error(request, "Invalid role.")
@@ -1254,3 +1279,88 @@ def system_health(request):
     }
     return render(request, 'admin_system_health.html', context)
 
+
+# --- Department Management Views ---
+
+def admin_department_list(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    departments = Department.objects.all().order_by('name')
+    return render(request, 'admin_department_list.html', {'departments': departments})
+
+def admin_add_department(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        description = request.POST.get('description')
+        
+        if Department.objects.filter(name=name).exists():
+            messages.error(request, "Department already exists.")
+            return render(request, 'admin_add_department.html', {'name': name, 'description': description})
+            
+        Department.objects.create(name=name, description=description)
+        return redirect('admin_department_list')
+        
+    return render(request, 'admin_add_department.html', {'name': '', 'description': ''})
+
+def admin_course_list(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    courses = Course.objects.all().order_by('-created_at')
+    return render(request, 'admin_course_list.html', {'courses': courses})
+
+def admin_exam_list(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    exams = Exam.objects.all().order_by('-created_at')
+    return render(request, 'admin_exam_list.html', {'exams': exams})
+
+def admin_edit_department(request, dept_id):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    try:
+        department = Department.objects.get(id=dept_id)
+    except Department.DoesNotExist:
+        messages.error(request, "Department not found.")
+        return redirect('admin_department_list')
+        
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        description = request.POST.get('description')
+        
+        if Department.objects.filter(name=name).exclude(id=dept_id).exists():
+            messages.error(request, "Department with this name already exists.")
+            return render(request, 'admin_add_department.html', {'department': department, 'name': name, 'description': description})
+            
+        department.name = name
+        department.description = description
+        department.save()
+        messages.success(request, "Department updated successfully.")
+        return redirect('admin_department_list')
+        
+    return render(request, 'admin_add_department.html', {'department': department})
+
+def admin_delete_department(request, dept_id):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied.")
+        return redirect('login')
+        
+    try:
+        department = Department.objects.get(id=dept_id)
+        department.delete()
+        messages.success(request, "Department deleted successfully.")
+    except Department.DoesNotExist:
+        messages.error(request, "Department not found.")
+        
+    return redirect('admin_department_list')

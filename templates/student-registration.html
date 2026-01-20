@@ -218,10 +218,9 @@
                             <label>Department</label>
                             <select name="department" class="select-field" required>
                                 <option value="" disabled selected>Select Department</option>
-                                <option value="cs">Computer Science</option>
-                                <option value="ee">Electrical Engineering</option>
-                                <option value="me">Mechanical Engineering</option>
-                                <option value="ce">Civil Engineering</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.name }}">{{ dept.name }}</option>
+                                {% endfor %}
                             </select>
                         </div>
 

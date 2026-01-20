@@ -1,4 +1,4 @@
-{% extends 'student_base.html' %}
+<!-- {% extends 'student_base.html' %}
 {% load static %}
 
 {% block student_content %}
@@ -161,14 +161,16 @@
                         if (data.status === "Calibrating") {
                             this.calibrationProgress = Math.min(this.calibrationProgress + 3, 95);
                             this.calibrationStatus = data.message || "Calibrating...";
-                        }
-
-                        if (data.status === "Calibrated") {
+                        } else if (data.status === "Calibrated") {
                             this.calibrationProgress = 100;
                             this.calibrationStatus = "Calibration Complete";
                             this.calibrating = false;
                             this.calibrationSuccess = true;
                             clearInterval(interval);
+                        } else if (data.status === "Flagged") {
+                            this.calibrationStatus = data.violations ? data.violations.join(", ") : "Issue Detected";
+                        } else if (data.status === "Error") {
+                            this.calibrationStatus = "Error: " + data.message;
                         }
 
                     } catch (e) {
@@ -648,4 +650,4 @@
         return num.toString().padStart(2, '0');
     }
 </script>
-{% endblock %}
+{% endblock %} 

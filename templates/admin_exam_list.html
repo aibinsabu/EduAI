@@ -1,0 +1,72 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block content %}
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">All Exams</h2>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div
+            class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-6 py-4 font-semibold text-gray-600">Title</th>
+                    <th class="px-6 py-4 font-semibold text-gray-600">Course</th>
+                    <th class="px-6 py-4 font-semibold text-gray-600">Type</th>
+                    <th class="px-6 py-4 font-semibold text-gray-600">Difficulty</th>
+                    <th class="px-6 py-4 font-semibold text-gray-600">Date & Duration</th>
+                    <th class="px-6 py-4 font-semibold text-gray-600">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for exam in exams %}
+                <tr class="hover:bg-gray-50/50 transition">
+                    <td class="px-6 py-4 font-medium text-gray-800">{{ exam.title }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ exam.course.name }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ exam.exam_type }}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            {% if exam.difficulty == 'Hard' %}bg-red-100 text-red-800
+                            {% elif exam.difficulty == 'Medium' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ exam.difficulty }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600 text-sm">
+                        {{ exam.date|date:"M d, H:i" }}
+                        <span class="text-xs text-gray-400 block">{{ exam.duration }} mins</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if exam.status == 'Completed' %}
+                        <span class="text-green-600 font-medium text-xs"><i class="fas fa-check-circle mr-1"></i>
+                            Completed</span>
+                        {% else %}
+                        <span class="text-blue-600 font-medium text-xs"><i class="fas fa-clock mr-1"></i>
+                            Scheduled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-file-signature text-4xl text-gray-300 mb-3"></i>
+                        <p>No exams found.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

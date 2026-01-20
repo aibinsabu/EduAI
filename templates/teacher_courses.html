@@ -152,9 +152,13 @@
                                     <div class="mb-4">
                                         <label for="courseDept"
                                             class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                                        <input type="text" name="department" id="courseDept" required
-                                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm px-4 py-2 border"
-                                            placeholder="e.g., Computer Science">
+                                        <select name="department" id="courseDept" required
+                                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm px-4 py-2 border bg-white">
+                                            <option value="" disabled selected>Select Department</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.name }}">{{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
                                     </div>
                                 </form>
                             </div>

@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-import math
-
 from sentence_transformers import SentenceTransformer, util
 
 class BaseGradingModel(ABC):
@@ -8,54 +6,48 @@ class BaseGradingModel(ABC):
     def grade_submission(self, question, student_answer, ideal_answer, rubric=""):
         pass
 
-class SemanticGrader(BaseGradingModel):
+class GradingService(BaseGradingModel):
     def __init__(self):
-        self.model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu', model_kwargs={"low_cpu_mem_usage": False})
-        print("Initializing Semantic Grader (Real Model Loaded)")
+        try:
+            self.model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu', model_kwargs={"low_cpu_mem_usage": False})
+            print("Initializing Grading Service (Real Model Loaded)")
+        except Exception as e:
+            print(f"Error initializing Grading Model: {e}")
+            self.model = None
 
     def grade_submission(self, question, student_answer, ideal_answer, rubric=""):
-        """
-        Grades a submission based on semantic similarity.
-        Returns: { "score": float, "feedback": str }
-        """
-        if not student_answer:
+        if not student_answer.strip():
             return {"score": 0, "feedback": "No answer provided."}
+            
+        if not self.model:
+            return {"score": 0, "feedback": "Grading Service Unavailable."}
 
-        # Real Similarity Calculation
-        embedding1 = self.model.encode(student_answer)
-        embedding2 = self.model.encode(ideal_answer)
+        embedding1 = self.model.encode(student_answer, convert_to_tensor=True)
+        embedding2 = self.model.encode(ideal_answer, convert_to_tensor=True)
+
         sim = float(util.cos_sim(embedding1, embedding2)[0][0])
-        
-        # sim = self._mock_similarity(student_answer, ideal_answer)
-        
-        score = round(sim * 10, 1) # Scale to 10
-        
-        feedback = ""
-        if score > 8:
-            feedback = "Excellent answer. Captures the core meaning well."
-        elif score > 5:
-            feedback = "Good attempt, but misses some key nuances relative to the ideal answer."
+
+        if sim >= 0.85:
+            score = 10
+            feedback = "Excellent answer. Very close to the expected answer."
+        elif sim >= 0.70:
+            score = 8
+            feedback = "Very good answer, minor details missing."
+        elif sim >= 0.55:
+            score = 6
+            feedback = "Good attempt but lacks depth."
+        elif sim >= 0.40:
+            score = 4
+            feedback = "Partially correct but important points missing."
+        elif sim >= 0.25:
+            score = 2
+            feedback = "Very weak answer."
         else:
-            feedback = "The answer deviates significantly from the expected response."
+            score = 0
+            feedback = "Incorrect answer."
 
         return {
             "score": score,
+            "similarity": round(sim, 3),
             "feedback": feedback
         }
-
-    def _mock_similarity(self, txt1, txt2):
-        # Simple Jaccard-like similarity for mock
-        set1 = set(txt1.lower().split())
-        set2 = set(txt2.lower().split())
-        intersection = len(set1.intersection(set2))
-        union = len(set1.union(set2))
-        return intersection / union if union > 0 else 0.0
-
-class GradingService:
-    _instance = None
-
-    @staticmethod
-    def get_instance():
-        if GradingService._instance is None:
-            GradingService._instance = SemanticGrader()
-        return GradingService._instance

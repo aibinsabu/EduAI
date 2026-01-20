@@ -1,0 +1,43 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block content %}
+<div class="p-6 max-w-2xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'admin_department_list' %}"
+            class="text-gray-500 hover:text-gray-700 transition flex items-center gap-2 mb-2">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800">
+            {% if department %}Edit{% else %}Add{% endif %} Department
+        </h2>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="mb-4">
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+                <input type="text" name="name" id="name" required value="{{ department.name|default:name|default:'' }}"
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+            </div>
+
+            <div class="mb-6">
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description
+                    (Optional)</label>
+                <textarea name="description" id="description" rows="4"
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">{{ department.description|default:description|default:'' }}</textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+                <a href="{% url 'admin_department_list' %}"
+                    class="px-4 py-2 text-gray-600 hover:text-gray-800 transition">Cancel</a>
+                <button type="submit"
+                    class="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-lg shadow-lg shadow-brand-500/30 transition">
+                    {% if department %}Update{% else %}Create{% endif %} Department
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
