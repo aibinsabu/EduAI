@@ -1,7 +1,7 @@
 {% extends 'teacher_base.html' %}
 
 {% block teacher_content %}
-<div class="h-full flex flex-col" x-data="{ createExamOpen: false }">
+<div class="h-full flex flex-col" x-data="{ createExamOpen: false, isCreating: false }">
     <!-- Top Glass Header -->
     <header class="h-20 glass-card m-6 rounded-2xl flex items-center justify-between px-8 z-40 sticky top-0 shrink-0">
         <div>
@@ -155,7 +155,8 @@
                 </div>
 
                 <div class="px-8 py-6">
-                    <form action="{% url 'create_exam' %}" method="post" id="createExamForm">
+                    <form action="{% url 'create_exam' %}" method="post" id="createExamForm"
+                        @submit="isCreating = true">
                         {% csrf_token %}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -278,6 +279,31 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Exam Generation Loader Overlay -->
+    <div x-show="isCreating" style="display: none;" class="fixed inset-0 z-[60] flex items-center justify-center"
+        aria-labelledby="loading-modal" role="dialog" aria-modal="true">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-md transition-opacity"></div>
+
+        <!-- Loading Card -->
+        <div
+            class="relative bg-white/10 border border-white/20 rounded-3xl p-10 flex flex-col items-center text-center shadow-2xl animate-pulse">
+            <div class="relative mb-6">
+                <!-- Custom Spinner Ring (Purple) -->
+                <div class="w-24 h-24 border-4 border-purple-400/30 border-t-purple-400 rounded-full animate-spin">
+                </div>
+                <!-- Icon in Center -->
+                <div class="absolute inset-0 flex items-center justify-center text-purple-300 text-3xl">
+                    <i class="fas fa-magic"></i>
+                </div>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2">Generating Exam</h3>
+            <p class="text-purple-100 text-sm max-w-xs leading-relaxed">
+                <i class="fas fa-brain mr-1"></i> AI is curating questions and setting up proctoring protocols...
+            </p>
         </div>
     </div>
 </div>

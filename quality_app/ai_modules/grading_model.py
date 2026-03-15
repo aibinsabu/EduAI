@@ -7,6 +7,14 @@ class BaseGradingModel(ABC):
         pass
 
 class GradingService(BaseGradingModel):
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if GradingService._instance is None:
+            GradingService._instance = GradingService()
+        return GradingService._instance
+
     def __init__(self):
         try:
             self.model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu', model_kwargs={"low_cpu_mem_usage": False})

@@ -17,9 +17,11 @@
             cameraReady: false,
             examStarted: false,
             calibrating: false,
-            calibrationProgress: 0,
+            verifying: false,
+            verified: false,
             calibrationSuccess: false,
             calibrationStatus: 'Looking for face...',
+            calibrationProgress: 0,
             checks: {
                 lighting: 'pending',
                 position: 'pending',
@@ -128,57 +130,111 @@
 
 
 
-            startCalibration() {
+            async startPreview() {
                 if (!this.cameraReady) return;
 
-                this.calibrating = true;
-                this.calibrationSuccess = false;
-                this.calibrationProgress = 0;
-                this.calibrationStatus = "Hold still and look at the center";
+                // BYPASS: Calibration removed.
+                this.calibrationSuccess = true;
+                this.verified = true;
+                this.calibrationStatus = "Camera Ready. You may begin.";
 
+                // Clear any existing session first (backend will auto-init)
+                await this.resetCalibrationSession();
+            },
+
+            async verifyPosition() {
+                if (!this.cameraReady) return;
+
+                this.verifying = true;
+                this.calibrationStatus = "Analyzing...";
+
+                const video = document.getElementById('webcamPreview');
+                if (!video || video.videoWidth === 0) {
+                    this.calibrationStatus = "Camera warming up. Please wait a moment...";
+                    this.verifying = false;
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const frameData = canvas.toDataURL('image/jpeg', 0.8); // Higher quality for single shot
+
+                try {
+                    const res = await fetch("{% url 'proctoring_stream' %}", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ image: frameData })
+                    });
+
+                    const data = await res.json();
+
+                    if (["preview", "OK", "Clean", "Calibrated"].includes(data.status)) {
+                        this.calibrationStatus = "Excellent! Position Verified.";
+                        this.checks.position = 'success';
+                        this.checks.lighting = 'success';
+                        this.verified = true; // Unlock baseline button
+                    } else {
+                        this.calibrationStatus = "Issue: " + (data.message || "Unknown");
+                        this.verified = false;
+                    }
+                } catch (e) {
+                    this.calibrationStatus = "Network Error. Try again.";
+                } finally {
+                    this.verifying = false;
+                }
+            },
+
+
+            async captureBaseline() {
+                this.calibrationStatus = "Capturing...";
                 const canvas = document.createElement('canvas');
                 const video = document.getElementById('webcamPreview');
 
-                const interval = setInterval(async () => {
-                    if (!video || video.videoWidth === 0) return;
+                if (!video || video.videoWidth === 0) {
+                    this.calibrationStatus = "Camera warming up. Please wait a moment...";
+                    return;
+                }
 
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0);
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const frameData = canvas.toDataURL('image/jpeg', 0.7);
 
-                    const frameData = canvas.toDataURL('image/jpeg', 0.6);
+                try {
+                    const res = await fetch("{% url 'proctoring_stream' %}", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ image: frameData, trigger_calibration: true })
+                    });
+                    const data = await res.json();
 
-                    try {
-                        const res = await fetch("{% url 'proctoring_stream' %}", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ image: frameData })
-                        });
-
-                        const data = await res.json();
-
-                        if (data.status === "Calibrating") {
-                            this.calibrationProgress = Math.min(this.calibrationProgress + 3, 95);
-                            this.calibrationStatus = data.message || "Calibrating...";
-                        } else if (data.status === "Calibrated") {
-                            this.calibrationProgress = 100;
-                            this.calibrationStatus = "Calibration Complete";
-                            this.calibrating = false;
-                            this.calibrationSuccess = true;
-                            clearInterval(interval);
-                        } else if (data.status === "Flagged") {
-                            this.calibrationStatus = data.violations ? data.violations.join(", ") : "Issue Detected";
-                        } else if (data.status === "Error") {
-                            this.calibrationStatus = "Error: " + data.message;
-                        }
-
-                    } catch (e) {
-                        console.error(e);
+                    if (data.status === 'Calibrated') {
+                        this.finalizeCalibration();
+                    } else {
+                        this.calibrationStatus = "Failed: " + (data.message || "Try again");
                     }
-                }, 250);
+                } catch (e) {
+                    this.calibrationStatus = "Connection Error";
+                }
             },
 
+            finalizeCalibration() {
+                this.calibrationSuccess = true;
+                this.calibrationStatus = "Calibration Complete";
+                this.calibrating = false;
+            },
+
+            async resetCalibrationSession() {
+                try {
+                    await fetch("{% url 'proctoring_stream' %}", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ reset: true })
+                    });
+                } catch (e) { console.error("Reset failed", e); }
+            },
 
 
 
@@ -365,7 +421,7 @@
                 </div>
             </div>
 
-            <button @click="securityStep = 2; initCamera()"
+            <button @click="securityStep = 2; initCamera().then(() => startPreview())"
                 class="w-full py-4 rounded-2xl bg-gray-900 text-white font-bold hover:bg-black transition shadow-xl transform hover:-translate-y-1">
                 Start Setup
             </button>
@@ -404,30 +460,19 @@
                 <div class="space-y-4 mb-8">
                     <!-- Status Item -->
                     <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                        <span class="font-medium text-gray-600">Lighting</span>
+                        <span class="font-medium text-gray-600">Camera Feed</span>
                         <i class="fas bg-white p-2 rounded-full shadow-sm"
                             :class="checks.lighting === 'success' ? 'fa-check text-green-500' : 'fa-circle text-gray-200'"></i>
                     </div>
-                    <div class="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                        <span class="font-medium text-gray-600">Position</span>
-                        <i class="fas bg-white p-2 rounded-full shadow-sm"
-                            :class="checks.position === 'success' ? 'fa-check text-green-500' : 'fa-circle text-gray-200'"></i>
-                    </div>
                 </div>
 
-                <div x-show="!calibrationSuccess" class="space-y-3">
-                    <p class="text-xs text-gray-400 text-center uppercase tracking-wider font-bold mb-2">Instructions
-                    </p>
+                <div class="space-y-3">
+                    <p class="text-xs text-gray-400 text-center uppercase tracking-wider font-bold mb-2">Status</p>
                     <p class="text-sm text-center text-gray-600 mb-6" x-text="calibrationStatus"></p>
-                    <button @click="startCalibration()" :disabled="!cameraReady || calibrating"
-                        class="w-full py-4 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 disabled:opacity-50 transition">
-                        <span x-text="calibrating ? 'Scanning...' : 'Start Scan'"></span>
-                    </button>
-                </div>
 
-                <div x-show="calibrationSuccess" style="display: none;">
-                    <button @click="startExam()"
-                        class="w-full py-4 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600 shadow-lg shadow-green-500/30 transition animate-pulse">
+                    <!-- DIRECT START BUTTON (Calibration Removed) -->
+                    <button @click="startExam()" :disabled="!cameraReady"
+                        class="w-full py-4 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600 shadow-lg shadow-green-500/30 transition transform active:scale-95 disabled:opacity-50 disabled:bg-gray-400">
                         Enter Exam Interface
                     </button>
                 </div>
@@ -650,4 +695,4 @@
         return num.toString().padStart(2, '0');
     }
 </script>
-{% endblock %} 
+{% endblock %}
