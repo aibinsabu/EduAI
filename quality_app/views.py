@@ -456,6 +456,55 @@ def teacher_exams(request):
     
     return render(request, 'teacher_exams.html', {'exams': exams, 'courses': courses})
 
+def teacher_exam_questions(request, exam_id):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        # Verify ownership
+        if exam.created_by.id != request.session.get('user_id') and exam.course.created_by.id != request.session.get('user_id'):
+             messages.error(request, "Permission denied.")
+             return redirect('teacher_exams')
+             
+        questions = Question.objects.filter(exam=exam).order_by('id')
+        return render(request, 'teacher_exam_questions.html', {'exam': exam, 'questions': questions})
+    except Exam.DoesNotExist:
+        messages.error(request, "Exam not found.")
+        return redirect('teacher_exams')
+
+def edit_question(request, exam_id, question_id):
+    if not request.session.get('role') == 'teacher':
+        return redirect('login')
+        
+    if request.method == 'POST':
+        try:
+            exam = Exam.objects.get(id=exam_id)
+            # Verify ownership
+            if exam.created_by.id != request.session.get('user_id') and exam.course.created_by.id != request.session.get('user_id'):
+                 messages.error(request, "Permission denied.")
+                 return redirect('teacher_exams')
+                 
+            question = Question.objects.get(id=question_id, exam=exam)
+            
+            question_text = request.POST.get('question_text')
+            answer_text = request.POST.get('answer_text')
+            
+            if question_text and answer_text:
+                question.question_text = question_text
+                question.answer = answer_text
+                question.save()
+                messages.success(request, "Question updated successfully.")
+            else:
+                messages.error(request, "Question text and answer are required.")
+                
+        except (Exam.DoesNotExist, Question.DoesNotExist):
+            messages.error(request, "Exam or Question not found.")
+        except Exception as e:
+            messages.error(request, f"Error updating question: {str(e)}")
+            
+    return redirect('teacher_exam_questions', exam_id=exam_id)
+
 import json
 
 def create_exam(request):
