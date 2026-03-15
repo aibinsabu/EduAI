@@ -11,11 +11,86 @@
             activeQuestionIndex: 0,
             totalQuestions: Number("{{ questions|length|default:0 }}"),
             answers: {}, // Track answered status for grid coloring
+            markedForReview: {},
+            
+            get canSubmit() {
+                // Return true only if no questions are marked for review
+                return Object.values(this.markedForReview).filter(marked => marked).length === 0;
+            },
+            
+            get hasMarkedQuestions() {
+                return !this.canSubmit;
+            },
+
+            // --- Calculator State ---
+            showCalculator: false,
+            calcPos: { x: window.innerWidth > 800 ? window.innerWidth - 460 : 20, y: 100 },
+            draggingCalc: false,
+            dragStart: { x: 0, y: 0 },
+            startDragCalc(e) {
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button')) return;
+                this.draggingCalc = true;
+                this.dragStart = { x: e.clientX - this.calcPos.x, y: e.clientY - this.calcPos.y };
+            },
+            onDragCalc(e) {
+                if (!this.draggingCalc) return;
+                this.calcPos = { x: e.clientX - this.dragStart.x, y: e.clientY - this.dragStart.y };
+            },
+            stopDragCalc() {
+                this.draggingCalc = false;
+            },
+            calcInput: '',
+            calcResult: '',
+            appendCalc(val) { this.calcInput += val; },
+            clearCalc() { this.calcInput = ''; this.calcResult = ''; },
+            deleteCalc() { this.calcInput = this.calcInput.slice(0, -1); },
+            factorial(n) {
+                if (n < 0) return NaN;
+                if (n === 0 || n === 1) return 1;
+                let res = 1;
+                for (let i = Math.floor(n); i >= 1; i--) { res *= i; }
+                return res;
+            },
+            evaluateCalc() {
+                try {
+                    let expr = this.calcInput
+                        .replace(/×/g, '*')
+                        .replace(/÷/g, '/')
+                        .replace(/asin\(/g, 'Math.asin(')
+                        .replace(/acos\(/g, 'Math.acos(')
+                        .replace(/atan\(/g, 'Math.atan(')
+                        .replace(/sin\(/g, 'Math.sin(')
+                        .replace(/cos\(/g, 'Math.cos(')
+                        .replace(/tan\(/g, 'Math.tan(')
+                        .replace(/log\(/g, 'Math.log10(')
+                        .replace(/ln\(/g, 'Math.log(')
+                        .replace(/√\(/g, 'Math.sqrt(')
+                        .replace(/abs\(/g, 'Math.abs(')
+                        .replace(/\^/g, '**')
+                        .replace(/π/g, 'Math.PI')
+                        .replace(/e/g, 'Math.E');
+                        
+                    // Handle factorial before evaluation (e.g. 5! -> 120)
+                    expr = expr.replace(/(\d+(?:\.\d+)?)!/g, (match, num) => this.factorial(Number(num)));
+
+                    this.calcResult = eval(expr);
+                    if (this.calcResult !== undefined) {
+                        this.calcResult = Math.round(this.calcResult * 1e10) / 1e10; // Clean up floating point errors
+                        this.calcInput = String(this.calcResult);
+                    }
+                } catch(e) {
+                    this.calcResult = 'Error';
+                }
+            },
 
             // --- Camera/Proctoring State ---
             securityStep: 1,
             cameraReady: false,
             examStarted: false,
+            isFullscreen: false,
+            fullscreenExitCount: 0,
+            fullscreenTimer: null,
+            fullscreenSecondsLeft: 5,
             calibrating: false,
             verifying: false,
             verified: false,
@@ -36,6 +111,42 @@
                 // Initialize checks for already answered questions (if page reload)
                 // specific implementation depends on how input values persist, 
                 // for now we start clean or could read from DOM inputs
+                document.addEventListener('fullscreenchange', this.checkFullscreen.bind(this));
+            },
+            
+            checkFullscreen() {
+                this.isFullscreen = !!document.fullscreenElement;
+                if (!this.isFullscreen && this.examStarted) {
+                    this.fullscreenExitCount++;
+                    if (this.fullscreenExitCount > 5) {
+                        alert("You have exited fullscreen too many times. Your exam will now be submitted.");
+                        this.submitExam();
+                        return;
+                    }
+                    this.fullscreenSecondsLeft = 5;
+                    this.fullscreenTimer = setInterval(() => {
+                        this.fullscreenSecondsLeft--;
+                        if (this.fullscreenSecondsLeft <= 0) {
+                            clearInterval(this.fullscreenTimer);
+                            this.fullscreenTimer = null;
+                            alert("You did not return to fullscreen in time. Your exam will now be submitted.");
+                            this.submitExam();
+                        }
+                    }, 1000);
+                } else if (this.isFullscreen && this.examStarted) {
+                    if (this.fullscreenTimer) {
+                        clearInterval(this.fullscreenTimer);
+                        this.fullscreenTimer = null;
+                    }
+                }
+            },
+            
+            enterFullscreen() {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch((err) => {
+                        console.error('Error attempting to enable fullscreen:', err.message);
+                    });
+                }
             },
 
             jumpToQuestion(index) {
@@ -47,6 +158,12 @@
             nextQuestion() {
                 if (this.activeQuestionIndex < this.totalQuestions - 1) {
                     this.activeQuestionIndex++;
+                } else if (this.activeQuestionIndex === this.totalQuestions - 1 && this.hasMarkedQuestions) {
+                    // Find the first marked question and jump to it
+                    const firstMarkedIndex = Object.keys(this.markedForReview).find(key => this.markedForReview[key] === true);
+                    if (firstMarkedIndex !== undefined) {
+                        this.activeQuestionIndex = parseInt(firstMarkedIndex);
+                    }
                 }
             },
 
@@ -248,6 +365,12 @@
 
             startExam() {
                 this.examStarted = true;
+
+                // Anti-cheating: Disable copy, cut, paste
+                document.addEventListener('copy', (e) => e.preventDefault());
+                document.addEventListener('cut', (e) => e.preventDefault());
+                document.addEventListener('paste', (e) => e.preventDefault());
+
                 this.$nextTick(() => {
                     const liveFeed = document.getElementById('liveProctoringSidebar');
                     if (liveFeed && window.globalExamStream) {
@@ -257,11 +380,16 @@
                     }
                 });
 
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen optional'));
-                }
+                this.enterFullscreen();
 
                 if (window.initExamTimer) window.initExamTimer();
+            },
+            
+            submitExam() {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.error(err));
+                }
+                document.getElementById('examForm').submit();
             },
 
             // startProctoringLoop() {
@@ -352,6 +480,9 @@
 </script>
 
 <style>
+    /* Hide the global sidebar specific to this view */
+    .glass-sidebar { display: none !important; }
+
     .glass-card {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(20px);
@@ -482,7 +613,72 @@
 
 
     <!-- MAIN EXAM UI (Visible after start) -->
-    <div x-show="examStarted" style="display: none;" class="flex h-screen bg-slate-50 overflow-hidden">
+    <div x-show="examStarted" style="display: none;" class="flex h-screen bg-slate-50 overflow-hidden relative">
+
+        <!-- FULLSCREEN ENFORCEMENT OVERLAY -->
+        <div x-show="examStarted && !isFullscreen" style="display: none;"
+             class="fixed inset-0 z-[999] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+             
+            <div class="glass-card w-full max-w-md rounded-3xl p-10 bg-white/90 shadow-2xl animate-pulse">
+                <div class="w-24 h-24 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-compress text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4 tracking-tight">Fullscreen Required</h2>
+                <p class="text-gray-600 mb-4 font-medium">
+                    You have exited fullscreen mode (Warning <span x-text="fullscreenExitCount"></span>/5).
+                </p>
+                <p class="text-2xl text-red-600 font-bold mb-8">
+                    Returning in: <span x-text="fullscreenSecondsLeft"></span>s
+                </p>
+                <button @click="enterFullscreen()"
+                    class="w-full py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-xl shadow-red-500/20 transition transform hover:-translate-y-1 text-lg flex justify-center items-center gap-2">
+                    <i class="fas fa-expand"></i> Resume Exam
+                </button>
+            </div>
+        </div>
+
+        <!-- Scientific Calculator Floating -->
+        <div x-show="showCalculator && isFullscreen" style="display: none;"
+             class="fixed z-[100] w-[420px] bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden select-none" 
+             :style="`left: ${calcPos.x}px; top: ${calcPos.y}px; cursor: ${draggingCalc ? 'grabbing' : 'grab'};`"
+             @mousedown="startDragCalc"
+             @window:mousemove="onDragCalc"
+             @window:mouseup="stopDragCalc"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95">
+            <!-- Header -->
+            <div class="bg-gray-800 px-4 py-3 flex justify-between items-center border-b border-gray-700">
+                <span class="text-white font-bold text-sm"><i class="fas fa-calculator mr-2 text-brand-400"></i>Scientific Calculator</span>
+                <button @click="showCalculator = false" class="text-gray-400 hover:text-white transition"><i class="fas fa-times"></i></button>
+            </div>
+            <!-- Display -->
+            <div class="p-4 bg-gray-900 border-b border-gray-800">
+                <div class="text-gray-400 text-sm h-5 text-right overflow-hidden mb-1" x-text="calcResult !== 'Error' && calcResult !== '' ? calcResult : ''"></div>
+                <input type="text" x-model="calcInput" class="w-full bg-transparent text-right text-4xl text-white font-mono outline-none" readonly>
+            </div>
+            <!-- Keypad -->
+            <div class="grid grid-cols-5 gap-px bg-gray-700">
+                <template x-for="btn in [
+                    {l:'sin', v:'sin('}, {l:'cos', v:'cos('}, {l:'tan', v:'tan('}, {l:'ln', v:'ln('}, {l:'log', v:'log('},
+                    {l:'asin', v:'asin('}, {l:'acos', v:'acos('}, {l:'atan', v:'atan('}, {l:'π', v:'π'}, {l:'e', v:'e'},
+                    {l:'(', v:'('}, {l:')', v:')'}, {l:'√', v:'√('}, {l:'%', v:'%'}, {l:'AC', a:'clear', c:'text-red-400 font-bold'},
+                    {l:'x²', v:'^2'}, {l:'x³', v:'^3'}, {l:'x^y', v:'^'}, {l:'n!', v:'!'}, {l:'÷', v:'÷', c:'text-brand-400 text-xl font-bold'},
+                    {l:'7', v:'7'}, {l:'8', v:'8'}, {l:'9', v:'9'}, {l:'DEL', a:'del', c:'text-orange-400 font-bold'}, {l:'×', v:'×', c:'text-brand-400 text-xl font-bold'},
+                    {l:'4', v:'4'}, {l:'5', v:'5'}, {l:'6', v:'6'}, {l:'1/x', v:'1/'}, {l:'-', v:'-', c:'text-brand-400 text-xl font-bold'},
+                    {l:'1', v:'1'}, {l:'2', v:'2'}, {l:'3', v:'3'}, {l:'|x|', v:'abs('}, {l:'+', v:'+', c:'text-brand-400 text-xl font-bold'},
+                    {l:'0', v:'0', span:2}, {l:'.', v:'.'}, {l:'=', a:'eval', span:2, c:'bg-brand-600 text-white font-bold text-xl hover:bg-brand-500'}
+                ]">
+                    <button type="button" @click="btn.a === 'clear' ? clearCalc() : btn.a === 'del' ? deleteCalc() : btn.a === 'eval' ? evaluateCalc() : appendCalc(btn.v)" 
+                            class="bg-gray-800 hover:bg-gray-700 transition py-4 text-sm font-medium text-gray-200"
+                            :class="(btn.c ? btn.c : '') + ' ' + (btn.span ? 'col-span-' + btn.span : '')"
+                            x-text="btn.l"></button>
+                </template>
+            </div>
+        </div>
 
         <!-- LEFT: Main Question Area -->
         <div class="flex-1 flex flex-col h-full relative z-10">
@@ -501,6 +697,9 @@
                 </div>
 
                 <div class="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-lg">
+                    <button type="button" @click="showCalculator = !showCalculator" class="flex items-center gap-2 text-brand-600 hover:text-brand-800 transition mr-4 font-bold border-r border-gray-300 pr-4">
+                        <i class="fas fa-calculator"></i> Calculator
+                    </button>
                     <i class="fas fa-question-circle text-gray-400"></i>
                     <span class="text-sm font-medium text-gray-600">Question <span
                             x-text="activeQuestionIndex + 1"></span> of <span x-text="totalQuestions"></span></span>
@@ -583,17 +782,18 @@
                 </button>
 
                 <div class="flex gap-4">
-                    <button
-                        class="px-6 py-3 rounded-xl text-yellow-600 font-bold hover:bg-yellow-50 transition border border-transparent hover:border-yellow-100">
-                        <i class="fas fa-flag mr-2"></i> Mark for Review
+                    <button type="button" @click="markedForReview[activeQuestionIndex] = !markedForReview[activeQuestionIndex]"
+                        class="px-6 py-3 rounded-xl font-bold transition border"
+                        :class="markedForReview[activeQuestionIndex] ? 'bg-yellow-100 text-yellow-700 border-yellow-300 shadow-inner' : 'text-yellow-600 border-transparent hover:border-yellow-100 hover:bg-yellow-50'">
+                        <i class="fas fa-flag mr-2"></i> <span x-text="markedForReview[activeQuestionIndex] ? 'Marked for Review' : 'Mark for Review'"></span>
                     </button>
 
-                    <button @click="nextQuestion()" x-show="activeQuestionIndex < totalQuestions - 1"
+                    <button type="button" @click="nextQuestion()" x-show="activeQuestionIndex < totalQuestions - 1 || hasMarkedQuestions"
                         class="px-8 py-3 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition flex items-center gap-2">
-                        Next Question <i class="fas fa-arrow-right"></i>
+                        <span x-text="(activeQuestionIndex === totalQuestions - 1 && hasMarkedQuestions) ? 'Review Marked' : 'Next Question'"></span> <i class="fas" :class="(activeQuestionIndex === totalQuestions - 1 && hasMarkedQuestions) ? 'fa-undo' : 'fa-arrow-right'"></i>
                     </button>
 
-                    <button form="examForm" type="submit" x-show="activeQuestionIndex === totalQuestions - 1"
+                    <button type="button" @click="submitExam()" x-show="activeQuestionIndex === totalQuestions - 1 && !hasMarkedQuestions"
                         class="px-8 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-500/20 transition flex items-center gap-2">
                         Submit Exam <i class="fas fa-check-circle"></i>
                     </button>
@@ -640,8 +840,9 @@
                         class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-200 question-nav-btn"
                         :class="{
                             'active ring-2 ring-brand-500 ring-offset-2': activeQuestionIndex === {{ forloop.counter0 }},
-                            'bg-brand-50 text-brand-700': answers[{{ forloop.counter0 }}] && activeQuestionIndex !== {{ forloop.counter0 }},
-                            'bg-gray-100 text-gray-500 hover:bg-gray-200': !answers[{{ forloop.counter0 }}] && activeQuestionIndex !== {{ forloop.counter0 }}
+                            'bg-yellow-100 text-yellow-700 border-2 border-yellow-400 shadow-inner': markedForReview[{{ forloop.counter0 }}] && activeQuestionIndex !== {{ forloop.counter0 }},
+                            'bg-brand-50 text-brand-700': answers[{{ forloop.counter0 }}] && !markedForReview[{{ forloop.counter0 }}] && activeQuestionIndex !== {{ forloop.counter0 }},
+                            'bg-gray-100 text-gray-500 hover:bg-gray-200': !answers[{{ forloop.counter0 }}] && !markedForReview[{{ forloop.counter0 }}] && activeQuestionIndex !== {{ forloop.counter0 }}
                         }">
                         {{ forloop.counter }}
                     </button>
@@ -654,6 +855,9 @@
                         <div class="w-3 h-3 rounded-full bg-brand-500"></div> Current
                     </div>
                     <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-yellow-400"></div> Marked
+                    </div>
+                    <div class="flex items-center gap-2">
                         <div class="w-3 h-3 rounded-full bg-brand-50 border border-brand-200"></div> Answered
                     </div>
                     <div class="flex items-center gap-2">
@@ -661,7 +865,6 @@
                     </div>
                 </div>
             </div>
-
         </aside>
 
     </div>
@@ -686,6 +889,9 @@
             if (--examDurationSeconds < 0) {
                 clearInterval(interval);
                 alert("Time is up! Submitting your exam.");
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => console.error(err));
+                }
                 document.getElementById('examForm').submit();
             }
         }, 1000);
