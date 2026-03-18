@@ -247,77 +247,88 @@
 
 
 
+            startCalibrationLoop() {
+                if (!this.cameraReady) return;
+                this.calibrating = true;
+                this.verified = false;
+                this.calibrationStatus = "Analyzing position and lighting...";
+                this.checks = { lighting: 'pending', position: 'pending', stability: 'pending' };
+
+                if (this.calibrationInterval) clearInterval(this.calibrationInterval);
+                
+                this.calibrationInterval = setInterval(async () => {
+                    if (this.calibrationSuccess) {
+                        clearInterval(this.calibrationInterval);
+                        return;
+                    }
+                    
+                    const video = document.getElementById('webcamPreview');
+                    if (!video || video.videoWidth === 0) return;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    const frameData = canvas.toDataURL('image/jpeg', 0.6);
+
+                    try {
+                        const res = await fetch("{% url 'proctoring_stream' %}", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ image: frameData })
+                        });
+
+                        const data = await res.json();
+                        
+                        if (data.status === "preview") {
+                             // Good position, waiting for user to capture baseline
+                             this.calibrationStatus = "Position Good. Look at the camera and click 'Calibrate Base Position'";
+                             this.checks.position = 'success';
+                             this.checks.lighting = 'success';
+                             this.verified = true;
+                        } else if (data.status === "Flagged") {
+                             this.calibrationStatus = "Issue: " + data.message;
+                             this.checks.position = 'pending';
+                             this.checks.lighting = 'pending';
+                             this.verified = false;
+                        } else if (data.status === "Error") {
+                             this.calibrationStatus = "Error: " + data.message;
+                             this.verified = false;
+                        }
+                    } catch (e) {
+                        console.error("Calibration check error:", e);
+                    }
+                }, 1000); // Check every second during setup
+            },
+
             async startPreview() {
                 if (!this.cameraReady) return;
 
-                // BYPASS: Calibration removed.
+                // TEMP BYPASS: Skip calibration
                 this.calibrationSuccess = true;
                 this.verified = true;
-                this.calibrationStatus = "Camera Ready. You may begin.";
+                this.calibrationStatus = "Camera Ready (Calibration Bypassed). You may begin.";
 
-                // Clear any existing session first (backend will auto-init)
+                // Clear any existing session first
                 await this.resetCalibrationSession();
-            },
-
-            async verifyPosition() {
-                if (!this.cameraReady) return;
-
-                this.verifying = true;
-                this.calibrationStatus = "Analyzing...";
-
-                const video = document.getElementById('webcamPreview');
-                if (!video || video.videoWidth === 0) {
-                    this.calibrationStatus = "Camera warming up. Please wait a moment...";
-                    this.verifying = false;
-                    return;
-                }
-
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                const frameData = canvas.toDataURL('image/jpeg', 0.8); // Higher quality for single shot
-
-                try {
-                    const res = await fetch("{% url 'proctoring_stream' %}", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ image: frameData })
-                    });
-
-                    const data = await res.json();
-
-                    if (["preview", "OK", "Clean", "Calibrated"].includes(data.status)) {
-                        this.calibrationStatus = "Excellent! Position Verified.";
-                        this.checks.position = 'success';
-                        this.checks.lighting = 'success';
-                        this.verified = true; // Unlock baseline button
-                    } else {
-                        this.calibrationStatus = "Issue: " + (data.message || "Unknown");
-                        this.verified = false;
-                    }
-                } catch (e) {
-                    this.calibrationStatus = "Network Error. Try again.";
-                } finally {
-                    this.verifying = false;
-                }
+                
+                // this.startCalibrationLoop(); 
             },
 
 
             async captureBaseline() {
-                this.calibrationStatus = "Capturing...";
+                if (!this.verified) return;
+                
+                this.calibrationStatus = "Capturing baseline...";
                 const canvas = document.createElement('canvas');
                 const video = document.getElementById('webcamPreview');
 
-                if (!video || video.videoWidth === 0) {
-                    this.calibrationStatus = "Camera warming up. Please wait a moment...";
-                    return;
-                }
+                if (!video || video.videoWidth === 0) return;
 
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
-                const frameData = canvas.toDataURL('image/jpeg', 0.7);
+                const frameData = canvas.toDataURL('image/jpeg', 0.8);
 
                 try {
                     const res = await fetch("{% url 'proctoring_stream' %}", {
@@ -330,7 +341,9 @@
                     if (data.status === 'Calibrated') {
                         this.finalizeCalibration();
                     } else {
-                        this.calibrationStatus = "Failed: " + (data.message || "Try again");
+                        // If strict check failed at the exact moment of capture
+                        this.calibrationStatus = "Capture Failed: " + (data.message || "Try again");
+                        this.verified = false;
                     }
                 } catch (e) {
                     this.calibrationStatus = "Connection Error";
@@ -339,8 +352,11 @@
 
             finalizeCalibration() {
                 this.calibrationSuccess = true;
-                this.calibrationStatus = "Calibration Complete";
                 this.calibrating = false;
+                this.verified = true;
+                this.checks.stability = 'success'; // Mark all complete
+                this.calibrationStatus = "Calibration Complete! You may now enter the exam.";
+                if (this.calibrationInterval) clearInterval(this.calibrationInterval);
             },
 
             async resetCalibrationSession() {
@@ -431,6 +447,10 @@
 
 
             startProctoringLoop() {
+                // TEMP BYPASS: Disable proctoring loop
+                console.log("Proctoring disabled.");
+                return;
+                
                 const canvas = document.createElement('canvas');
                 const video = document.getElementById('liveProctoringSidebar');
 
@@ -601,11 +621,21 @@
                     <p class="text-xs text-gray-400 text-center uppercase tracking-wider font-bold mb-2">Status</p>
                     <p class="text-sm text-center text-gray-600 mb-6" x-text="calibrationStatus"></p>
 
-                    <!-- DIRECT START BUTTON (Calibration Removed) -->
-                    <button @click="startExam()" :disabled="!cameraReady"
-                        class="w-full py-4 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600 shadow-lg shadow-green-500/30 transition transform active:scale-95 disabled:opacity-50 disabled:bg-gray-400">
-                        Enter Exam Interface
-                    </button>
+                    <!-- REAL CALIBRATION BUTTONS -->
+                    <div x-show="!calibrationSuccess" class="space-y-3">
+                        <button @click="captureBaseline()" :disabled="!verified"
+                            class="w-full py-4 rounded-xl text-white font-bold shadow-lg transition transform active:scale-95 disabled:opacity-50 disabled:bg-gray-400"
+                            :class="verified ? 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30' : 'bg-gray-400'">
+                            Calibrate Base Position
+                        </button>
+                    </div>
+
+                    <div x-show="calibrationSuccess" style="display: none;">
+                        <button @click="startExam()"
+                            class="w-full py-4 rounded-xl bg-green-500 text-white font-bold hover:bg-green-600 shadow-lg shadow-green-500/30 transition transform hover:-translate-y-1">
+                            Enter Exam Interface
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

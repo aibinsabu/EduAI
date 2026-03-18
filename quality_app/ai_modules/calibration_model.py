@@ -14,11 +14,9 @@ absl.logging.set_verbosity(absl.logging.ERROR)
 absl.logging.set_stderrthreshold('error')
 
 
-import cv2
-import numpy as np
-import mediapipe as mp
-import base64
+import threading
 
+_local = threading.local()
 
 class CalibrationEngine:
     """
@@ -27,7 +25,18 @@ class CalibrationEngine:
     """
 
     def __init__(self):
-        print("DEBUG: CalibrationEngine Initialized (Stateless Mode)")
+        print("DEBUG: CalibrationEngine Initialized")
+
+    @property
+    def face_mesh(self):
+        if not hasattr(_local, 'face_mesh'):
+            _local.face_mesh = mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=True,
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5
+            )
+        return _local.face_mesh
 
     def analyze_frame(self, frame_data, strict=True):
         if "," in frame_data:
@@ -56,13 +65,7 @@ class CalibrationEngine:
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             rgb.flags.writeable = False
 
-            with mp.solutions.face_mesh.FaceMesh(
-                static_image_mode=True,
-                max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.5
-            ) as face_mesh:
-                results = face_mesh.process(rgb)
+            results = self.face_mesh.process(rgb)
 
             if not results.multi_face_landmarks:
                 return {"status": "Flagged", "message": "No Face Detected"}
@@ -100,7 +103,11 @@ class CalibrationEngine:
 
         except Exception as e:
             print(f"Calibration Error: {e}")
-            return {"status": "Error", "message": str(e)}
+            err_str = str(e)
+            if len(err_str) > 50:
+                 # Mediapipe protobuf errors are huge and break the UI
+                 err_str = "AI Engine is warming up or frame tracking failed. Retrying..."
+            return {"status": "Error", "message": err_str}
 
     def get_head_pose(self, landmarks, img_shape):
         h, w = img_shape

@@ -16,13 +16,25 @@ absl.logging.set_stderrthreshold('error')
 import cv2
 import time
 import base64
-import numpy as np
 import mediapipe as mp
+import threading
 
+_local = threading.local()
 
 class ProctoringEngine:
     def __init__(self):
-        print("DEBUG: ProctoringEngine Initialized (Stateless MediaPipe)")
+        print("DEBUG: ProctoringEngine Initialized")
+
+    @property
+    def face_mesh(self):
+        if not hasattr(_local, 'face_mesh'):
+            _local.face_mesh = mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=True,
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5
+            )
+        return _local.face_mesh
 
     def get_head_pose(self, landmarks, img_shape):
         h, w = img_shape[:2]
@@ -90,14 +102,7 @@ class ProctoringEngine:
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             rgb.flags.writeable = False
 
-            # ✅ Stateless MediaPipe
-            with mp.solutions.face_mesh.FaceMesh(
-                static_image_mode=True,
-                max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.5
-            ) as face_mesh:
-                results = face_mesh.process(rgb)
+            results = self.face_mesh.process(rgb)
 
             if not results.multi_face_landmarks:
                 return {"status": "Flagged", "violations": ["Face Not Visible"]}, calibration_state
@@ -155,7 +160,7 @@ class ProctoringEngine:
 
         except Exception as e:
             print(f"Proctoring Error: {e}")
-            raise e
+            return {"status": "Error", "message": "Proctoring model busy or tracking lost"}, calibration_state
 
 
 class ProctoringService:

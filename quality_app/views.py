@@ -1203,15 +1203,15 @@ def proctoring_stream(request):
         calibration_state = request.session.get('proctoring_calibration_state', None)
         
         # Determine if we should use the Lightweight Calibration Engine or the Full Proctoring Engine
-        # BYPASS: Always assume calibrated to skip manual process
-        is_calibrated = True
         if not calibration_state:
              calibration_state = {
-                "calibrated": True,
+                "calibrated": False,
                 "base_pitch": 0.0,
                 "base_yaw": 0.0,
                 "violation_streak": 0
              }
+             
+        is_calibrated = calibration_state.get("calibrated", False)
 
         # Inject trigger from request if present
         if payload.get("trigger_calibration"):
@@ -1219,7 +1219,7 @@ def proctoring_stream(request):
             from .ai_modules.calibration_model import get_calibration_engine
             calib_engine = get_calibration_engine()
             
-            analysis = calib_engine.analyze_frame(frame_data, strict=False)
+            analysis = calib_engine.analyze_frame(frame_data, strict=True)
             
             if analysis.get("status") == "OK":
                 # Success! Set baseline
@@ -1241,7 +1241,7 @@ def proctoring_stream(request):
             from .ai_modules.calibration_model import get_calibration_engine
             calib_engine = get_calibration_engine()
             
-            analysis = calib_engine.analyze_frame(frame_data, strict=False)
+            analysis = calib_engine.analyze_frame(frame_data, strict=True)
             
             if analysis.get("status") == "OK":
                  return JsonResponse({"status": "preview", "message": "Aligning... OK"})
