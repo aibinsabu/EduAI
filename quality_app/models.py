@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -158,11 +160,24 @@ class Course(models.Model):
 class Exam(models.Model):
     title = models.CharField(max_length=200)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    date = models.DateTimeField()
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
     duration = models.IntegerField(help_text="Duration in minutes")
     status = models.CharField(max_length=20, choices=[('Scheduled', 'Scheduled'), ('Completed', 'Completed')], default='Scheduled')
     created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        if self.start_time and self.start_time < timezone.now():
+            raise ValidationError({'start_time': "Start time must be in the future."})
+        
+        if self.start_time and self.end_time:
+            if self.end_time <= self.start_time:
+                raise ValidationError({'end_time': "End time must be after start time."})
+            
+            if self.end_time < timezone.now():
+                raise ValidationError({'end_time': "End time must be in the future."})
 
     # New fields for Teacher Dashboard
     EXAM_TYPES = [

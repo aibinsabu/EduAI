@@ -228,9 +228,19 @@
                             <td class="px-6 py-4 font-semibold text-gray-900">{{ exam.title }}</td>
                             <td class="px-6 py-4">{{ exam.course.name }}</td>
                             <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <i class="fas fa-calendar-day text-brand-400"></i>
-                                    {{ exam.date|date:"M d, Y H:i" }}
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-calendar-alt text-brand-400"></i>
+                                        <span class="text-xs font-bold text-gray-500 uppercase">Start:</span>
+                                        <span class="text-gray-700">{{ exam.start_time|date:"M d, Y H:i" }}</span>
+                                    </div>
+                                    {% if exam.end_time %}
+                                    <div class="flex items-center gap-2">
+                                        <i class="fas fa-clock text-orange-400"></i>
+                                        <span class="text-xs font-bold text-gray-500 uppercase">End:</span>
+                                        <span class="text-gray-700">{{ exam.end_time|date:"M d, Y H:i" }}</span>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </td>
                             <td class="px-6 py-4">
@@ -241,10 +251,17 @@
                                 <span class="text-xs text-gray-400 ml-2">{{ exam.duration }} mins</span>
                             </td>
                             <td class="px-6 py-4 text-right">
+                                {% if now < exam.start_time %}
+                                <button disabled
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-200 text-gray-400 text-xs font-bold cursor-not-allowed">
+                                    <i class="fas fa-lock"></i> Locked
+                                </button>
+                                {% else %}
                                 <a href="{% url 'exam_interface' exam.id %}"
                                     class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold shadow-lg shadow-brand-500/30 hover:bg-brand-700 transition transform hover:-translate-y-0.5">
                                     <i class="fas fa-pencil-alt"></i> Take Exam
                                 </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}

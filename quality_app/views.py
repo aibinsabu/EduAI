@@ -507,6 +507,9 @@ def edit_question(request, exam_id, question_id):
 
 import json
 
+from django.utils.dateparse import parse_datetime
+from django.utils.timezone import make_aware, is_naive
+
 def create_exam(request):
     if not request.session.get('role') == 'teacher':
         return redirect('login')
@@ -514,7 +517,18 @@ def create_exam(request):
     if request.method == 'POST':
         title = request.POST.get('title')
         course_id = request.POST.get('course_id')
-        date = request.POST.get('date')
+        start_time_raw = request.POST.get('date') # "YYYY-MM-DDTHH:MM"
+        end_time_raw = request.POST.get('end_time')
+        
+        # Make datetimes aware to avoid comparison errors
+        start_time = parse_datetime(start_time_raw) if start_time_raw else None
+        if start_time and is_naive(start_time):
+            start_time = make_aware(start_time)
+            
+        end_time = parse_datetime(end_time_raw) if end_time_raw else None
+        if end_time and is_naive(end_time):
+            end_time = make_aware(end_time)
+
         duration = request.POST.get('duration')
         exam_type = request.POST.get('exam_type')
         difficulty = request.POST.get('difficulty')
@@ -573,18 +587,28 @@ def create_exam(request):
              print(f"DEBUG: AI Generated Questions: {questions}")
              generated_questions_data = questions
 
-        exam = Exam.objects.create(
-            title=title,
-            course=course,
-            date=date,
-            duration=duration,
-            exam_type=exam_type,
-            difficulty=difficulty,
-            proctoring_config=json.dumps(proctoring_config),
-            creation_method='AI', # Explicitly marking as AI for dashboard stats
-            created_by=teacher,
-            status='Scheduled'
-        )
+        try:
+            exam = Exam(
+                title=title,
+                course=course,
+                start_time=start_time,
+                end_time=end_time,
+                duration=duration,
+                exam_type=exam_type,
+                difficulty=difficulty,
+                proctoring_config=json.dumps(proctoring_config),
+                creation_method='AI', # Explicitly marking as AI for dashboard stats
+                created_by=teacher,
+                status='Scheduled'
+            )
+            exam.full_clean()
+            exam.save()
+        except ValidationError as e:
+            messages.error(request, f"Validation Error: {e.message_dict}")
+            return redirect('teacher_exams')
+        except Exception as e:
+            messages.error(request, f"Error creating exam: {e}")
+            return redirect('teacher_exams')
         
 
         
@@ -1013,8 +1037,13 @@ def student_dashboard(request):
     # Taken Exams IDs
     taken_exam_ids = Result.objects.filter(student=student).values_list('exam_id', flat=True)
 
-    # Upcoming Exams (Excluding taken ones)
-    upcoming_exams = Exam.objects.filter(course__in=courses, status='Scheduled').exclude(id__in=taken_exam_ids).order_by('date')
+    # Upcoming/Active Exams (Excluding taken ones)
+    upcoming_exams = Exam.objects.filter(
+        course__in=courses, 
+        status='Scheduled'
+    ).exclude(id__in=taken_exam_ids).filter(
+        Q(end_time__gt=timezone.now()) | Q(end_time__isnull=True)
+    ).order_by('start_time')
     
     # Completed Exams (All history)
     completed_exams = Result.objects.filter(student=student).order_by('-created_at')
@@ -1032,6 +1061,7 @@ def student_dashboard(request):
         "completed_exams": completed_exams,
         "completed_exams_count": completed_exams_count,
         "materials": materials,
+        "now": timezone.now(),
     })
 
 from django.http import JsonResponse
@@ -1110,6 +1140,17 @@ def exam_interface(request, exam_id):
         return redirect("login")
 
     exam = Exam.objects.get(id=exam_id)
+    
+    # Time window enforcement
+    now = timezone.now()
+    if exam.start_time > now:
+        messages.error(request, f"The exam has not started yet. It starts at {exam.start_time}.")
+        return redirect('student_dashboard')
+    
+    if exam.end_time and exam.end_time < now:
+        messages.error(request, "The exam window has already closed.")
+        return redirect('student_dashboard')
+
     questions = Question.objects.filter(exam=exam)
 
     return render(request, "exam_interface.html", {
