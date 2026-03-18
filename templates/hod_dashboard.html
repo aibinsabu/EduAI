@@ -135,6 +135,13 @@
                 <i class="fas fa-shield-alt w-5 text-center group-hover:scale-110 transition-transform"></i>
                 <span class="font-medium">Exam Integrity</span>
             </button>
+
+            <button @click="activeTab = 'reports'; loadReportsData()"
+                :class="activeTab === 'reports' ? 'nav-item-active' : 'nav-item-inactive'"
+                class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group text-left">
+                <i class="fas fa-file-invoice w-5 text-center group-hover:scale-110 transition-transform"></i>
+                <span class="font-medium">Exam Reports</span>
+            </button>
         </nav>
 
         <div class="p-4 border-t border-gray-800/50 bg-black/20">
@@ -164,7 +171,7 @@
             <div>
                 <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-gray-600">
                     <span
-                        x-text="activeTab === 'oversight' ? 'Oversight Dashboard' : (activeTab === 'faculty' ? 'Faculty Management' : 'Exam Integrity')"></span>
+                        x-text="activeTab === 'oversight' ? 'Oversight Dashboard' : (activeTab === 'faculty' ? 'Faculty Management' : (activeTab === 'integrity' ? 'Exam Integrity' : 'Departmental Exam Reports'))"></span>
                 </h2>
                 <p class="text-sm text-gray-500 font-medium">Departmental Overview</p>
             </div>
@@ -305,39 +312,31 @@
                 </div>
             </div>
 
-            <!-- TAB 3: EXAM INTEGRITY -->
-            <div x-show="activeTab === 'integrity'" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 translate-y-4" style="display: none;">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Chart -->
-                    <div class="glass-card p-6 rounded-2xl">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">Flag Distribution</h3>
-                        <div class="h-64 relative">
-                            <canvas id="integrityChart"></canvas>
-                        </div>
-                    </div>
+                </div>
+            </div>
 
-                    <!-- Logs -->
-                    <div class="glass-card p-0 rounded-2xl md:col-span-2 overflow-hidden">
-                        <div class="px-6 py-5 border-b border-gray-100 bg-red-50/30">
-                            <h3 class="font-bold text-red-600">Recent Severe Incidents</h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left text-gray-600">
-                                <thead
-                                    class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
-                                    <tr>
-                                        <th class="px-6 py-4">Student</th>
-                                        <th class="px-6 py-4">Exam</th>
-                                        <th class="px-6 py-4">Issue</th>
-                                        <th class="px-6 py-4">Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100" id="integrityTableBody">
-                                    <!-- Dynamic Content -->
-                                </tbody>
-                            </table>
-                        </div>
+            <!-- TAB 4: EXAM REPORTS -->
+            <div x-show="activeTab === 'reports'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4" style="display: none;">
+                <div class="glass-card p-0 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800">Departmental Exam Participation</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead class="bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                                <tr>
+                                    <th class="px-6 py-4">Exam Title</th>
+                                    <th class="px-6 py-4">Course</th>
+                                    <th class="px-6 py-4">Date & Time</th>
+                                    <th class="px-6 py-4">Attendance</th>
+                                    <th class="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100" id="reportsTableBody">
+                                <!-- Dynamic Content -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -557,21 +556,49 @@
             });
         }
 
-        function renderIntegrityLogs(logs) {
-            const tbody = document.getElementById('integrityTableBody');
+
+        // --- Reports Data ---
+        function loadReportsData() {
+            fetch('/api/hod/exams/')
+                .then(response => response.json())
+                .then(data => {
+                    renderReportsTable(data.exams);
+                })
+                .catch(error => console.error('Error loading reports data:', error));
+        }
+
+        function renderReportsTable(exams) {
+            const tbody = document.getElementById('reportsTableBody');
             tbody.innerHTML = '';
-            if (logs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400">No severe incidents reported</td></tr>';
+            if (exams.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No exams found in this department</td></tr>';
                 return;
             }
-            logs.forEach(l => {
+            exams.forEach(e => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-red-50/20 transition";
+                tr.className = "hover:bg-brand-50/30 transition duration-150";
+                
+                const dateStr = e.start_time ? new Date(e.start_time).toLocaleString() : 'N/A';
+                
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-medium text-gray-900">${l.student__first_name} ${l.student__last_name}</td>
-                    <td class="px-6 py-4 text-gray-500">${l.exam__title}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">${l.flag_type}</span></td>
-                    <td class="px-6 py-4 text-xs text-gray-400">${new Date(l.timestamp).toLocaleString()}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900">${e.title}</td>
+                    <td class="px-6 py-4 text-gray-500">${e.course__name}</td>
+                    <td class="px-6 py-4 text-xs text-gray-400">${dateStr}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded-lg bg-purple-50 text-purple-600 font-bold border border-purple-100">
+                            ${e.attendance_count} Students
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="/teacher/exam/${e.id}/attendance/" class="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition" title="View Details">
+                                <i class="fa fa-eye"></i>
+                            </a>
+                            <a href="/hod/exam/${e.id}/report/" class="p-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 transition" title="Download PDF">
+                                <i class="fa fa-download"></i>
+                            </a>
+                        </div>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });

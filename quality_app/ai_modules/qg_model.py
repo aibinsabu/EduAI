@@ -11,22 +11,28 @@ except LookupError:
     nltk.download('punkt')
 
 # ==============================
-# LOAD MODEL (SAFE & STABLE)
+# LAZY LOAD MODEL (MEMORY EFFICIENT)
 # ==============================
-print("Loading model...")
-
 MODEL_NAME = "google/flan-t5-base"
+_qg_pipeline = None
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
-
-qg = pipeline(
-    "text2text-generation",
-    model=model,
-    tokenizer=tokenizer
-)
-
-print("QG Model loaded successfully (T5).")
+def get_qg_pipeline():
+    global _qg_pipeline
+    if _qg_pipeline is None:
+        print("Loading AI model (Lazy Load)...")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+            model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
+            _qg_pipeline = pipeline(
+                "text2text-generation",
+                model=model,
+                tokenizer=tokenizer
+            )
+            print("AI Model loaded successfully.")
+        except Exception as e:
+            print(f"FAILED to load AI model: {e}")
+            return None
+    return _qg_pipeline
 
 # ==============================
 # CLEAN TEXT UTILITY
@@ -68,6 +74,10 @@ def generate_questions(text, max_questions=5):
     for sent in sentences:
         if len(sent) < 40:
             continue
+
+        qg = get_qg_pipeline()
+        if qg is None:
+            return [] # Fail gracefully
 
         prompt_templates = [
             f"Generate a question based on this sentence: {sent}",

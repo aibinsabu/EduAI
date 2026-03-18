@@ -15,6 +15,7 @@ urlpatterns = [
     path('principle-registration/', views.principle_registration, name='principle_registration'),
     path('hod-registration/', views.hod_registration, name='hod_registration'),
     path('hod-dashboard/', views.hod_dashboard, name='hod_dashboard'),
+    path('hod/exam/<int:exam_id>/report/', views.generate_hod_report, name='generate_hod_report'),
     path('teacher-registration/', views.teacher_registration, name='teacher_registration'),
     path('student-registration/', views.student_registration, name='student_registration'),
     path('about/', views.about, name='about'),
@@ -30,6 +31,7 @@ urlpatterns = [
     path('api/hod/faculty-management/role/', api.manage_faculty_role, name='api_manage_role'),
     path('api/hod/faculty-management/material/', api.review_study_material, name='api_review_material'),
     path('api/hod/exam-integrity/', api.get_exam_integrity_report, name='api_exam_integrity'),
+    path('api/hod/exams/', api.get_department_exams, name='api_dept_exams'),
 
     # --- Teacher Interface ---
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
@@ -41,6 +43,7 @@ urlpatterns = [
     path('teacher/exam/<int:exam_id>/question/<int:question_id>/edit/', views.edit_question, name='edit_question'),
     path('teacher/exam/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
     path('teacher/exam/create/', views.create_exam, name='create_exam'),
+    path('teacher/exam/<int:exam_id>/attendance/', views.exam_attendance, name='exam_attendance'),
     path('teacher/results/', views.teacher_results, name='teacher_results'),
     path('teacher/result/<int:result_id>/', views.result_detail, name='result_detail'),
     path('teacher/result/<int:result_id>/finalize/', views.finalize_result, name='finalize_result'),

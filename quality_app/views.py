@@ -683,6 +683,104 @@ def create_exam(request):
         
     return redirect('teacher_exams')
 
+def exam_attendance(request, exam_id):
+    role = request.session.get('role')
+    if role not in ['teacher', 'hod', 'principal']:
+        return redirect('login')
+        
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        user_id = request.session.get('user_id')
+        
+        # Permission Logic
+        allowed = False
+        if role == 'principal':
+            allowed = True
+        elif role == 'teacher':
+             if exam.created_by.id == user_id or exam.course.created_by.id == user_id:
+                 allowed = True
+        elif role == 'hod':
+            hod = HOD.objects.get(id=user_id)
+            if exam.course.department == hod.department:
+                allowed = True
+                
+        if not allowed:
+             messages.error(request, "Permission denied.")
+             return redirect(f'{role}_dashboard')
+             
+        # Fetch all students who attended this exam
+        results = Result.objects.filter(exam=exam).select_related('student').order_by('-created_at')
+        
+        return render(request, 'teacher_exam_attendance.html', {
+            'exam': exam,
+            'results': results
+        })
+    except Exam.DoesNotExist:
+        messages.error(request, "Exam not found.")
+        return redirect('teacher_exams')
+
+def generate_hod_report(request, exam_id):
+    if not request.session.get('role') == 'hod':
+        return redirect('login')
+        
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        hod_id = request.session.get('user_id')
+        hod = HOD.objects.get(id=hod_id)
+        
+        if exam.course.department != hod.department:
+            messages.error(request, "Access denied.")
+            return redirect('hod_dashboard')
+
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib import colors
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="attendance_report_{exam.id}.pdf"'
+
+        doc = SimpleDocTemplate(response, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        elements.append(Paragraph(f"Exam Attendance Report", styles['Title']))
+        elements.append(Paragraph(f"Exam: {exam.title}", styles['Heading2']))
+        elements.append(Paragraph(f"Department: {hod.department}", styles['Normal']))
+        elements.append(Paragraph(f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+
+        results = Result.objects.filter(exam=exam).select_related('student')
+        
+        data = [['Student Name', 'Reg No', 'Score', 'Status']]
+        for r in results:
+            data.append([
+                f"{r.student.first_name} {r.student.last_name}",
+                r.student.registration_no,
+                str(r.score),
+                "Pass" if r.is_pass else "Fail"
+            ])
+
+        if len(data) == 1:
+            data.append(["No records found", "-", "-", "-"])
+
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.blue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ]))
+        
+        elements.append(table)
+        doc.build(elements)
+        return response
+
+    except (Exam.DoesNotExist, HOD.DoesNotExist):
+        messages.error(request, "Error generating report.")
+        return redirect('hod_dashboard')
+
 def teacher_results(request):
     if not request.session.get('role') == 'teacher':
         return redirect('login')
@@ -810,6 +908,15 @@ def principal_dashboard(request):
     pending_teachers = Teacher.objects.filter(status=False)
     pending_teachers_count = pending_teachers.count()
 
+    # 5. Attendance Analytics
+    total_submissions = Result.objects.count()
+    # Unique students who attended
+    students_attended = Result.objects.values('student').distinct().count()
+    
+    # Simple attendance rate: submissions per exam vs total possible (not perfect but good for dashboard)
+    # Let's say: average students per exam
+    avg_attendance_per_exam = (total_submissions / total_exams) if total_exams > 0 else 0
+
     context = {
         'principal': principal,
         'total_students': total_students,
@@ -821,6 +928,11 @@ def principal_dashboard(request):
             'ai_exams': ai_exams,
             'manual_exams': manual_exams,
             'overridden_grades': overridden_grades
+        },
+        'attendance_stats': {
+            'total_submissions': total_submissions,
+            'students_attended': students_attended,
+            'avg_per_exam': round(avg_attendance_per_exam, 1)
         },
         'proctoring_anomalies': list(proctoring_anomalies),
         'recent_users': recent_users,
@@ -1007,12 +1119,36 @@ def generate_principal_report(request):
     t_ai.setStyle(TableStyle([
          ('BACKGROUND', (0, 0), (-1, 0), colors.green),
          ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
          ('GRID', (0, 0), (-1, -1), 1, colors.black),
     ]))
     elements.append(t_ai)
+    elements.append(Spacer(1, 20))
+
+    # 4. Attendance Analytics
+    elements.append(Paragraph("Attendance Analytics", styles['Heading2']))
+    total_subs = Result.objects.count()
+    unique_studs = Result.objects.values('student').distinct().count()
+    avg_per = (total_subs / total_exams) if total_exams > 0 else 0
+    
+    att_data = [
+        ['Metric', 'Value'],
+        ['Total Exam Submissions', str(total_subs)],
+        ['Unique Students Attended', str(unique_studs)],
+        ['Avg Attendance Per Exam', f"{avg_per:.1f}"]
+    ]
+    t_att = Table(att_data, colWidths=[200, 100])
+    t_att.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.indigo),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    elements.append(t_att)
 
     doc.build(elements)
     return response
+
 
 # --- Student Dashboard Views ---
 

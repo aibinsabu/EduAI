@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Avg, Count, Q
-from .models import Course, Exam, Result, StudyMaterial, ProctoringLog, AIClarificationLog, Teacher, User, Student
+from .models import Course, Exam, Result, StudyMaterial, ProctoringLog, AIClarificationLog, Teacher, User, Student, HOD, Principal
 import json
 import traceback
 
@@ -11,10 +11,27 @@ import traceback
 @require_http_methods(["GET"])
 def get_oversight_analytics(request):
     try:
+        # Get HOD's department if applicable
+        dept = None
+        if request.session.get('role') == 'hod':
+            hod_id = request.session.get('user_id')
+            hod = HOD.objects.get(id=hod_id)
+            dept = hod.department
+
+        # Base querysets
+        results_qs = Result.objects.all()
+        courses_qs = Course.objects.all()
+        ai_logs_qs = AIClarificationLog.objects.all()
+
+        if dept:
+            results_qs = results_qs.filter(exam__course__department=dept)
+            courses_qs = courses_qs.filter(department=dept)
+            ai_logs_qs = ai_logs_qs.filter(course__department=dept)
+
         # 1. Pass/Fail Rates
-        total_results = Result.objects.count()
+        total_results = results_qs.count()
         if total_results > 0:
-            pass_count = Result.objects.filter(is_pass=True).count()
+            pass_count = results_qs.filter(is_pass=True).count()
             pass_rate = (pass_count / total_results) * 100
             fail_rate = 100 - pass_rate
         else:
@@ -22,10 +39,10 @@ def get_oversight_analytics(request):
             fail_rate = 0
 
         # 2. Subject Performance (Avg Score)
-        courses = Course.objects.annotate(avg_score=Avg('exam__result__score')).values('name', 'avg_score')
+        courses = courses_qs.annotate(avg_score=Avg('exam__result__score')).values('name', 'avg_score')
         
         # 3. AI Clarification Usage (Most queried subjects)
-        ai_usage = AIClarificationLog.objects.values('course__name').annotate(query_count=Count('id')).order_by('-query_count')[:5]
+        ai_usage = ai_logs_qs.values('course__name').annotate(query_count=Count('id')).order_by('-query_count')[:5]
 
         data = {
             "pass_fail_rate": {"pass": pass_rate, "fail": fail_rate},
@@ -44,9 +61,21 @@ def get_oversight_analytics(request):
 @require_http_methods(["GET"])
 def get_faculty_management_data(request):
     try:
-        teachers = Teacher.objects.values('id', 'first_name', 'last_name', 'department', 'status')
-        
-        pending_materials = StudyMaterial.objects.filter(status='Pending').values(
+        dept = None
+        if request.session.get('role') == 'hod':
+            hod_id = request.session.get('user_id')
+            hod = HOD.objects.get(id=hod_id)
+            dept = hod.department
+
+        teachers_qs = Teacher.objects.all()
+        materials_qs = StudyMaterial.objects.filter(status='Pending')
+
+        if dept:
+            teachers_qs = teachers_qs.filter(department=dept)
+            materials_qs = materials_qs.filter(course__department=dept)
+
+        teachers = teachers_qs.values('id', 'first_name', 'last_name', 'department', 'status')
+        pending_materials = materials_qs.values(
             'id', 'title', 'course__name', 'teacher__first_name', 'teacher__last_name', 'uploaded_at', 'file'
         )
 
@@ -110,12 +139,22 @@ def review_study_material(request):
 @require_http_methods(["GET"])
 def get_exam_integrity_report(request):
     try:
+        dept = None
+        if request.session.get('role') == 'hod':
+            hod_id = request.session.get('user_id')
+            hod = HOD.objects.get(id=hod_id)
+            dept = hod.department
+
+        logs_qs = ProctoringLog.objects.all()
+
+        if dept:
+            logs_qs = logs_qs.filter(exam__course__department=dept)
+
         # Count flags by type across all exams
-        flag_counts = ProctoringLog.objects.values('flag_type').annotate(count=Count('id'))
+        flag_counts = logs_qs.values('flag_type').annotate(count=Count('id'))
         
         # Recent severe flags
-        # Ensure 'student' queries work with new Student model
-        recent_flags = ProctoringLog.objects.filter(severity='High').values(
+        recent_flags = logs_qs.filter(severity='High').values(
             'student__first_name', 'student__last_name', 'exam__title', 'flag_type', 'timestamp'
         ).order_by('-timestamp')[:10]
 
@@ -127,4 +166,31 @@ def get_exam_integrity_report(request):
     except Exception as e:
         print(f"Error in get_exam_integrity_report: {e}")
         traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def get_department_exams(request):
+    try:
+        dept = None
+        if request.session.get('role') == 'hod':
+            hod_id = request.session.get('user_id')
+            hod = HOD.objects.get(id=hod_id)
+            dept = hod.department
+        elif request.session.get('role') == 'principal' or request.user.is_superuser:
+            pass # Principal sees all
+        else:
+            return JsonResponse({"error": "Unauthorized"}, status=403)
+
+        exams_qs = Exam.objects.all()
+        if dept:
+            exams_qs = exams_qs.filter(course__department=dept)
+
+        # Annotate with attendance count (Result count)
+        exams = exams_qs.annotate(attendance_count=Count('result')).values(
+            'id', 'title', 'course__name', 'start_time', 'end_time', 'attendance_count'
+        ).order_by('-start_time')
+
+        return JsonResponse({"exams": list(exams)})
+    except Exception as e:
+        print(f"Error in get_department_exams: {e}")
         return JsonResponse({"error": str(e)}, status=500)
