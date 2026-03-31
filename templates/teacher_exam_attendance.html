@@ -17,6 +17,11 @@
         </div>
 
         <div class="flex items-center space-x-4">
+            <div class="relative">
+                <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="attendanceSearchInput" placeholder="Search students..."
+                    class="pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-purple-500/20 text-sm text-gray-600 w-64 transition-all focus:border-purple-500 outline-none">
+            </div>
             <div class="px-4 py-2 bg-purple-50 rounded-lg border border-purple-100">
                 <span class="text-xs font-bold text-purple-600 uppercase tracking-wider">Total Attendees</span>
                 <p class="text-xl font-bold text-purple-700">{{ results.count }}</p>
@@ -45,7 +50,7 @@
                             <th class="px-6 py-4">Result</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody id="attendanceTableBody" class="divide-y divide-gray-100">
                         {% for result in results %}
                         <tr class="hover:bg-purple-50/30 transition duration-150">
                             <td class="px-6 py-4">
@@ -98,4 +103,30 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('attendanceSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const query = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#attendanceTableBody tr');
+                
+                rows.forEach(row => {
+                    // Skip the empty state row
+                    if (row.querySelector('.px-6.py-12')) return;
+                    
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

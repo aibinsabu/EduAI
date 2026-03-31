@@ -247,15 +247,12 @@
                         </div>
 
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ ram_usage }}<span
-                                    class="text-2xl text-gray-400">%</span></span>
-                            <span class="text-sm font-medium text-gray-500 ml-auto">{{ ram_available }}GB / {{ ram_total
-                                }}GB Free</span>
+                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ ram_usage }}<span class="text-2xl text-gray-400">%</span></span>
+                            <span class="text-sm font-medium text-gray-500 ml-auto">{{ ram_available }}GB / {{ ram_total }}GB</span>
                         </div>
 
                         <div class="w-full bg-blue-50 rounded-full h-4 overflow-hidden shadow-inner">
-                            <div class="{% if ram_usage > 80 %}bg-red-500{% else %}bg-gradient-to-r from-blue-500 to-cyan-400{% endif %} h-full rounded-full transition-all duration-1000 ease-out"
-                                :style="'width: {{ ram_usage }}%;'"></div>
+                            <div class="{% if ram_usage > 80 %}bg-red-500{% else %}bg-gradient-to-r from-blue-500 to-cyan-400{% endif %} h-full rounded-full transition-all duration-1000 ease-out" :style="'width: {{ ram_usage }}%;'"></div>
                         </div>
                         <p class="text-xs text-gray-400 mt-2 text-right">Optimal performance range</p>
                     </div>
@@ -279,15 +276,12 @@
                         </div>
 
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ disk_usage }}<span
-                                    class="text-2xl text-gray-400">%</span></span>
-                            <span class="text-sm font-medium text-gray-500 ml-auto">{{ disk_free }}GB / {{ disk_total
-                                }}GB Free</span>
+                            <span class="text-5xl font-bold text-gray-800 tracking-tight">{{ disk_usage }}<span class="text-2xl text-gray-400">%</span></span>
+                            <span class="text-sm font-medium text-gray-500 ml-auto">{{ disk_free }}GB / {{ disk_total }}GB</span>
                         </div>
 
                         <div class="w-full bg-purple-50 rounded-full h-4 overflow-hidden shadow-inner">
-                            <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-1000 ease-out"
-                                :style="'width: {{ disk_usage }}%;'"></div>
+                            <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-1000 ease-out" :style="'width: {{ disk_usage }}%;'"></div>
                         </div>
                         <p class="text-xs text-gray-400 mt-2 text-right">SSD Optimized</p>
                     </div>

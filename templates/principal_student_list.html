@@ -13,13 +13,20 @@
 <body class="bg-gray-50 text-gray-800 font-sans">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Header -->
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <div class="flex items-center space-x-4">
                 <a href="{% url 'principal_dashboard' %}" class="text-indigo-600 hover:text-indigo-800">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h1 class="text-2xl font-bold text-gray-900">Student Directory</h1>
             </div>
+
+            <div class="flex-1 max-w-md w-full relative">
+                <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="studentSearchInput" placeholder="Search students by name, reg no, or department..."
+                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+            </div>
+
             <div class="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                 <span class="text-sm font-medium text-gray-500">Total Students:</span>
                 <span class="ml-2 text-lg font-bold text-indigo-600">{{ students.count }}</span>
@@ -53,7 +60,7 @@
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody id="studentTableBody" class="bg-white divide-y divide-gray-200">
                     {% for student in students %}
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -96,6 +103,21 @@
             </table>
         </div>
     </div>
+    <script>
+        document.getElementById('studentSearchInput').addEventListener('keyup', function() {
+            const query = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#studentTableBody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

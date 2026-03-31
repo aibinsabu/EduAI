@@ -12,6 +12,11 @@
         </div>
 
         <div class="flex items-center space-x-4">
+            <div class="relative">
+                <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="examSearchInput" placeholder="Search exams..."
+                    class="pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-purple-500/20 text-sm text-gray-600 w-64 transition-all focus:border-purple-500 outline-none">
+            </div>
             <button @click="createExamOpen = true"
                 class="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-full text-sm font-medium transition shadow-lg shadow-purple-500/30 transform hover:-translate-y-0.5">
                 <i class="fas fa-magic"></i>
@@ -56,7 +61,7 @@
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody id="examTableBody" class="divide-y divide-gray-100">
                         {% for exam in exams %}
                         <tr class="hover:bg-brand-50/30 transition duration-150">
                             <td class="px-6 py-4 font-semibold text-gray-900">{{ exam.title }}</td>
@@ -75,10 +80,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-xs">Type: <span class="font-medium">{{ exam.exam_type
-                                            }}</span></span>
-                                    <span class="text-xs">Difficulty: <span class="font-medium">{{ exam.difficulty
-                                            }}</span></span>
+                                    <span class="text-xs">Type: <span class="font-medium">{{ exam.exam_type }}</span></span>
+                                    <span class="text-xs">Difficulty: <span class="font-medium">{{ exam.difficulty }}</span></span>
                                     <span class="text-xs text-gray-400">{{ exam.duration }} mins</span>
                                 </div>
                             </td>
@@ -360,4 +363,30 @@
         }
     });
 </script>
-{% endblock %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('examSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const query = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#examTableBody tr');
+                
+                rows.forEach(row => {
+                    // Skip the empty state row
+                    if (row.querySelector('.px-6.py-12')) return;
+                    
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

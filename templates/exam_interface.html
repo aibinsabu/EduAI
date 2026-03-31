@@ -762,28 +762,22 @@
                         <div class="flex-1">
                             {% if q.question_type == 'MCQ' %}
                             <div class="space-y-3">
-                                <!-- Placeholder for MCQ options - logic needed if JSON options exist -->
                                 <p class="text-gray-400 italic">Select the best answer:</p>
+                                {% for option in q.parsed_options %}
                                 <div
                                     class="p-4 border rounded-xl hover:bg-brand-50 hover:border-brand-200 cursor-pointer transition group">
                                     <label class="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="question_{{ q.id }}" value="A"
-                                            @change="markAnswered({{ forloop.counter0 }})"
+                                        <input type="radio" name="question_{{ q.id }}" value="{{ option }}"
+                                            @change="markAnswered({{ forloop.parentloop.counter0 }})"
                                             class="w-5 h-5 text-brand-600 focus:ring-brand-500">
-                                        <span class="text-gray-700 font-medium group-hover:text-brand-900">Option A
-                                            (Placeholder)</span>
+                                        <span class="text-gray-700 font-medium group-hover:text-brand-900">{{ option }}</span>
                                     </label>
                                 </div>
-                                <div
-                                    class="p-4 border rounded-xl hover:bg-brand-50 hover:border-brand-200 cursor-pointer transition group">
-                                    <label class="flex items-center gap-3 cursor-pointer">
-                                        <input type="radio" name="question_{{ q.id }}" value="B"
-                                            @change="markAnswered({{ forloop.counter0 }})"
-                                            class="w-5 h-5 text-brand-600 focus:ring-brand-500">
-                                        <span class="text-gray-700 font-medium group-hover:text-brand-900">Option B
-                                            (Placeholder)</span>
-                                    </label>
+                                {% empty %}
+                                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm italic">
+                                    No options available for this MCQ question.
                                 </div>
+                                {% endfor %}
                             </div>
                             {% else %}
                             <textarea name="question_{{ q.id }}" @input="markAnswered({{ forloop.counter0 }})"

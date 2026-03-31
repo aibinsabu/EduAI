@@ -68,8 +68,7 @@
                 </div>
                 <div>
                     <h1 class="text-3xl font-bold mb-1">Hello, {{ student.first_name }}!</h1>
-                    <p class="text-blue-100 text-sm font-medium tracking-wide opacity-90">ID: {{ student.registration_no
-                        }} | Department: {{ student.department }}</p>
+                    <p class="text-blue-100 text-sm font-medium tracking-wide opacity-90">ID: {{ student.registration_no }} | Department: {{ student.department }}</p>
                 </div>
             </div>
         </div>
@@ -169,11 +168,9 @@
                             class="h-10 w-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
                             <i class="fas fa-file-pdf text-lg"></i>
                         </div>
-                        <span class="px-2 py-1 bg-gray-100 rounded text-[10px] font-semibold text-gray-500">{{
-                            material.course.department }}</span>
+                        <span class="px-2 py-1 bg-gray-100 rounded text-[10px] font-semibold text-gray-500">{{ material.course.department }}</span>
                     </div>
-                    <h4 class="font-bold text-gray-800 mb-1 line-clamp-1" title="{{ material.title }}">{{ material.title
-                        }}</h4>
+                    <h4 class="font-bold text-gray-800 mb-1 line-clamp-1" title="{{ material.title }}">{{ material.title }}</h4>
                     <p class="text-xs text-gray-500 mb-4">{{ material.course.name }}</p>
 
                     <div class="flex items-center justify-between pt-4 border-t border-gray-50">

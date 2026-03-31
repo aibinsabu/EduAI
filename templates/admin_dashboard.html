@@ -252,8 +252,7 @@
                                     <div class="flex-1">
                                         <div class="flex justify-between items-start">
                                             <p class="text-sm font-medium text-gray-800">New Registration</p>
-                                            <span class="text-[10px] text-gray-400 whitespace-nowrap ml-2">{{
-                                                student.created_at|timesince }} ago</span>
+                                            <span class="text-[10px] text-gray-400 whitespace-nowrap ml-2">{{ student.created_at|timesince }} ago</span>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-0.5">{{ student.email }} joined</p>
                                     </div>
@@ -452,6 +451,7 @@
             </div>
             {% endblock %}
         </div>
+        {% block extra_js %}{% endblock %}
     </main>
 </body>
 

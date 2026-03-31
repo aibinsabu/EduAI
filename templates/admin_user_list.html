@@ -196,7 +196,7 @@
             <div class="flex items-center space-x-6">
                 <div class="relative">
                     <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                    <input type="text" placeholder="Search {{ role_name|lower }}s..."
+                    <input type="text" id="userSearchInput" placeholder="Search {{ role_name|lower }}s..."
                         class="pl-10 pr-4 py-2 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-brand-500/20 text-sm text-gray-600 w-64 transition-all">
                 </div>
 
@@ -265,7 +265,7 @@
                                 <th class="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody id="userTableBody" class="divide-y divide-gray-100">
                             {% for user in users %}
                             <tr class="hover:bg-brand-50/30 transition duration-150">
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -290,8 +290,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">{{ user.email }}</td>
-                                <td class="px-6 py-4 font-mono text-xs bg-gray-50 rounded px-2 w-fit">{{
-                                    user.registration_no }}</td>
+                                <td class="px-6 py-4 font-mono text-xs bg-gray-50 rounded px-2 w-fit">{{ user.registration_no }}</td>
 
                                 {% if role_key == 'teacher' %}
                                 <td class="px-6 py-4">
@@ -462,6 +461,28 @@
             const modal = document.getElementById('resetPasswordModal');
             modal.classList.add('hidden');
         }
+
+        // Search functionality
+        document.getElementById('userSearchInput').addEventListener('keyup', function() {
+            const query = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#userTableBody tr');
+            let found = false;
+
+            rows.forEach(row => {
+                // Skip the "No users found" row if it exists
+                if (row.querySelector('.px-6.py-12')) return;
+
+                const text = row.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = '';
+                    found = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Handle "No results" case if needed (optional but good for UX)
+        });
     </script>
 </body>
 

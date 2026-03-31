@@ -1288,6 +1288,16 @@ def exam_interface(request, exam_id):
         return redirect('student_dashboard')
 
     questions = Question.objects.filter(exam=exam)
+    
+    # Parse MCQ options if they exist
+    for q in questions:
+        if q.question_type == 'MCQ' and q.options:
+            try:
+                q.parsed_options = json.loads(q.options)
+            except:
+                q.parsed_options = []
+        else:
+            q.parsed_options = []
 
     return render(request, "exam_interface.html", {
         "exam": exam,

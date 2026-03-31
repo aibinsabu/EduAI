@@ -2,10 +2,15 @@
 
 {% block content %}
 <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <h2 class="text-2xl font-bold text-gray-800">Department Management</h2>
+        <div class="flex-1 max-w-sm relative">
+            <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="deptSearchInput" placeholder="Search departments..."
+                class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm outline-none">
+        </div>
         <a href="{% url 'admin_add_department' %}"
-            class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg transition">
+            class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg transition shrink-0">
             <i class="fas fa-plus mr-2"></i> Add Department
         </a>
     </div>
@@ -31,7 +36,7 @@
                     <th class="px-6 py-4 font-semibold text-gray-600 text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody id="deptTableBody" class="divide-y divide-gray-100">
                 {% for dept in departments %}
                 <tr class="hover:bg-gray-50/50 transition">
                     <td class="px-6 py-4 font-medium text-gray-800">{{ dept.name }}</td>
@@ -61,4 +66,28 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('deptSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const query = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#deptTableBody tr');
+                
+                rows.forEach(row => {
+                    if (row.querySelector('.px-6.py-12')) return;
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

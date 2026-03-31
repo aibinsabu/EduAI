@@ -2,9 +2,13 @@
 
 {% block content %}
 <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <h2 class="text-2xl font-bold text-gray-800">All Courses</h2>
-        <!-- No add button for admin as usually teachers add courses, or we can add later -->
+        <div class="flex-1 max-w-sm relative">
+            <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="courseSearchInput" placeholder="Search courses..."
+                class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm outline-none">
+        </div>
     </div>
 
     {% if messages %}
@@ -28,7 +32,7 @@
                     <th class="px-6 py-4 font-semibold text-gray-600">Created At</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody id="courseTableBody" class="divide-y divide-gray-100">
                 {% for course in courses %}
                 <tr class="hover:bg-gray-50/50 transition">
                     <td class="px-6 py-4 font-medium text-gray-800">{{ course.name }}</td>
@@ -38,8 +42,7 @@
                             {{ course.department|default:"-" }}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-gray-600">{{ course.created_by.first_name }} {{
-                        course.created_by.last_name }}</td>
+                    <td class="px-6 py-4 text-gray-600">{{ course.created_by.first_name }} {{ course.created_by.last_name }}</td>
                     <td class="px-6 py-4 text-gray-500 text-sm">{{ course.created_at|date:"M d, Y" }}</td>
                 </tr>
                 {% empty %}
@@ -54,4 +57,28 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('courseSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const query = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#courseTableBody tr');
+                
+                rows.forEach(row => {
+                    if (row.querySelector('.px-6.py-12')) return;
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}
