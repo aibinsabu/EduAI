@@ -1,7 +1,8 @@
 {% extends 'teacher_base.html' %}
 
 {% block teacher_content %}
-<div class="h-full flex flex-col" x-data="{ editModalOpen: false, currentQuestionId: null, currentQuestionText: '', currentAnswerText: '' }">
+<div class="h-full flex flex-col" x-data="{ editModalOpen: false, currentQuestionId: null, currentQuestionText: '', currentAnswerText: '', currentQuestionType: '', currentOptions: [] }">
+    <!-- ... (Top Glass Header and Content Area are the same until the Edit button) ... -->
     <!-- Top Glass Header -->
     <header class="h-20 glass-card m-6 rounded-2xl flex items-center justify-between px-8 z-40 sticky top-0 shrink-0">
         <div>
@@ -46,7 +47,7 @@
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         {{ question.question_type }}
                     </span>
-                    <button @click="currentQuestionId = {{ question.id }}; currentQuestionText = `{{ question.question_text|escapejs }}`; currentAnswerText = `{{ question.answer|escapejs }}`; editModalOpen = true;"
+                    <button @click="currentQuestionId = {{ question.id }}; currentQuestionText = `{{ question.question_text|escapejs }}`; currentAnswerText = `{{ question.answer|escapejs }}`; currentQuestionType = '{{ question.question_type }}'; currentOptions = [{% for opt in question.options_list %}`{{ opt|escapejs }}`{% if not forloop.last %},{% endif %}{% endfor %}]; if (currentQuestionType === 'MCQ') { while(currentOptions.length < 4) currentOptions.push('Option ' + String.fromCharCode(65 + currentOptions.length)); currentOptions = currentOptions.slice(0, 4); } editModalOpen = true;"
                         class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition text-sm flex items-center gap-2">
                         <i class="fas fa-edit"></i> Edit
                     </button>
@@ -56,6 +57,20 @@
                     <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Question</h4>
                     <p class="text-gray-900 font-medium whitespace-pre-wrap">{{ question.question_text }}</p>
                 </div>
+
+                {% if question.question_type == 'MCQ' and question.options %}
+                <div class="mb-4 ml-4">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Options</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {% for option in question.options_list %}
+                        <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100 text-sm">
+                            <span class="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400">{{ forloop.counter|yesno:"A,B,C,D" }}</span>
+                            <span class="text-gray-700">{{ option }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 
                 <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
                     <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Expected Answer / Key</h4>
@@ -123,9 +138,24 @@
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Expected Answer / Key</label>
                                 <p class="text-xs text-gray-500 mb-2">This is used by the AI to grade the student's response.</p>
-                                <textarea name="answer_text" x-model="currentAnswerText" required rows="4"
+                                <textarea name="answer_text" x-model="currentAnswerText" required rows="2"
                                     class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2.5 border"></textarea>
                             </div>
+
+                            <template x-if="currentQuestionType === 'MCQ'">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Options</label>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <template x-for="(opt, index) in currentOptions" :key="index">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500" x-text="['A','B','C','D'][index]"></span>
+                                                <input type="text" name="options[]" x-model="currentOptions[index]" required
+                                                    class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border">
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </form>
                 </div>

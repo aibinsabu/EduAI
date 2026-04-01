@@ -65,55 +65,131 @@ def extract_text_from_pdf(file_path):
 # ==============================
 # QUESTION GENERATION
 # ==============================
-def generate_questions(text, max_questions=5):
+def generate_questions(text, max_questions=5, exam_type='MCQ', difficulty='Medium', num_mcq=None, num_essay=None):
     sentences = nltk.sent_tokenize(text)
     random.shuffle(sentences)
 
     questions = []
+    
+    # Track counts for Mixed mode
+    mcq_count = 0
+    essay_count = 0
+    
+    # Default Mixed distribution if not provided
+    if exam_type == 'Mixed' and (num_mcq is None or num_essay is None):
+        num_mcq = max_questions // 2
+        num_essay = max_questions - num_mcq
 
-    for sent in sentences:
-        if len(sent) < 40:
-            continue
-
-        qg = get_qg_pipeline()
-        if qg is None:
-            return [] # Fail gracefully
-
-        prompt_templates = [
-            f"Generate a question based on this sentence: {sent}",
-            f"Create a conceptual question from this text: {sent}",
-            f"Formulate a why-type question from: {sent}",
-            f"Ask a question to test understanding of: {sent}"
-        ]
-
-        prompt = random.choice(prompt_templates)
-
-        try:
-            output = qg(
-                prompt,
-                max_new_tokens=60,
-                do_sample=True,
-                temperature=0.7,
-                top_p=0.9
-            )
-
-            question = output[0]["generated_text"].strip()
-
-            if len(question.split()) < 4:
-                continue
-
-            questions.append({
-                "question": question,
-                "answer": sent
-            })
-
+    for attempt in range(2): # Try up to 2 passes with different settings
+        for sent in sentences:
             if len(questions) >= max_questions:
                 break
-        except Exception as e:
-            print(f"Generation Error: {e}")
-            continue
+                
+            # Lenient filtering on second pass
+            min_len = 50 if attempt == 0 else 30
+            if len(sent) < min_len:
+                continue
 
-    return questions
+            qg = get_qg_pipeline()
+            if qg is None:
+                return questions
+
+            # Determine current question type
+            if exam_type == 'Mixed':
+                if mcq_count < num_mcq:
+                    current_type = 'MCQ'
+                elif essay_count < num_essay:
+                    current_type = 'Essay'
+                else:
+                    break # Reached requested counts for mixed
+            else:
+                current_type = exam_type
+
+            # Adjust prompt on second pass to get different questions
+            if attempt == 0:
+                if current_type == 'MCQ':
+                    prompt = f"generate mcq question and 4 options and correct answer from context: {sent}"
+                else:
+                    prompt = f"generate a descriptive theory question from context: {sent}"
+            else:
+                if current_type == 'MCQ':
+                    prompt = f"Using a different angle, generate an MCQ question from this context: {sent}"
+                else:
+                    prompt = f"Explain a key concept from this text as a question: {sent}"
+
+            try:
+                output = qg(
+                    prompt,
+                    max_new_tokens=128,
+                    do_sample=True,
+                    temperature=0.7 + (attempt * 0.2), # Increase randomness on second pass
+                    top_p=0.9
+                )
+
+                generated_text = output[0]["generated_text"].strip()
+                if not generated_text:
+                    continue
+
+                if current_type == 'MCQ':
+                    import re
+                    opt_pattern = r"([A-Da-d][\)\.])\s*(.*?)(?=\s*[A-Da-d][\)\.]|$)"
+                    found_opts = re.findall(opt_pattern, generated_text, re.DOTALL)
+                    
+                    if found_opts:
+                        q_part = re.split(r"[A-Da-d][\)\.]", generated_text)[0].strip()
+                        options = [opt[1].strip() for opt in found_opts]
+                        while len(options) < 4:
+                            options.append(f"Option {chr(65+len(options))}")
+                            
+                        questions.append({
+                            "question": q_part if q_part else "Generated MCQ Question",
+                            "answer": sent,
+                            "options": options[:4],
+                            "type": "MCQ"
+                        })
+                        mcq_count += 1
+                    elif "A)" in generated_text or "a)" in generated_text or "(A)" in generated_text:
+                        questions.append({
+                            "question": generated_text,
+                            "answer": sent,
+                            "options": ["A", "B", "C", "D"],
+                            "type": "MCQ"
+                        })
+                        mcq_count += 1
+                    else:
+                        # Distractor generation
+                        opt_prompt = f"generate 3 wrong distractors for the answer '{sent}' based on context: {text[:500]}"
+                        opt_output = qg(opt_prompt, max_new_tokens=64)
+                        distractors = opt_output[0]["generated_text"].split(',')
+                        
+                        options = [sent] + [d.strip() for d in distractors[:3]]
+                        while len(options) < 4:
+                            options.append("None of the above")
+                        random.shuffle(options)
+
+                        questions.append({
+                            "question": generated_text if "?" in generated_text else f"{generated_text}?",
+                            "answer": sent,
+                            "options": options,
+                            "type": "MCQ"
+                        })
+                        mcq_count += 1
+                else:
+                    questions.append({
+                        "question": generated_text if "?" in generated_text else f"{generated_text}?",
+                        "answer": sent,
+                        "type": "Essay" if current_type == 'Essay' else "SAQ"
+                    })
+                    essay_count += 1
+
+            except Exception as e:
+                print(f"Error generating question: {e}")
+                continue
+                
+        if len(questions) >= max_questions:
+            break
+            
+    return questions[:max_questions]
 
 if __name__ == "__main__":
     pass

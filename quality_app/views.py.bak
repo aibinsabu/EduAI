@@ -493,12 +493,6 @@ def edit_question(request, exam_id, question_id):
             if question_text and answer_text:
                 question.question_text = question_text
                 question.answer = answer_text
-                
-                if question.question_type == 'MCQ':
-                    options = request.POST.getlist('options[]')
-                    if options:
-                        question.options = json.dumps(options)
-                
                 question.save()
                 messages.success(request, "Question updated successfully.")
             else:
@@ -538,8 +532,6 @@ def create_exam(request):
         duration = request.POST.get('duration')
         exam_type = request.POST.get('exam_type')
         difficulty = request.POST.get('difficulty')
-        num_mcq = int(request.POST.get('num_mcq', 0)) if exam_type == 'Mixed' else None
-        num_essay = int(request.POST.get('num_essay', 0)) if exam_type == 'Mixed' else None
         
         # Proctoring Settings
         camera = request.POST.get('camera') == 'on'
@@ -587,9 +579,7 @@ def create_exam(request):
              
              num_questions = int(request.POST.get('num_questions', 5))
              # aqg = AQGService.get_instance()
-             questions = generate_questions(context_text, max_questions=num_questions, 
-                                          exam_type=exam_type, difficulty=difficulty,
-                                          num_mcq=num_mcq, num_essay=num_essay)
+             questions = generate_questions(context_text, max_questions=num_questions)
              # Store these questions somewhere. For now, we'll put them in a JSON field if Exam had one, 
              # or just log them. Let's assume Exam model has a 'questions_data' field or we create Question objects.
              # Since Question model isn't in the provided models.py, I'll serialize them to a potential new field 
@@ -675,15 +665,12 @@ def create_exam(request):
                 try:
                     q_text = sanitize_for_db(q_data.get('question'))
                     q_ans = sanitize_for_db(q_data.get('answer'))
-                    q_type = q_data.get('type', 'SAQ')
-                    q_opts = json.dumps(q_data.get('options')) if q_data.get('options') else None
                     
                     Question.objects.create(
                         exam=exam,
                         question_text=q_text,
-                        question_type=q_type,
-                        answer=q_ans,
-                        options=q_opts
+                        question_type='SAQ', # Default or infer
+                        answer=q_ans
                     )
                 except Exception as e:
                     print(f"Error saving question: {e}")
@@ -1301,6 +1288,16 @@ def exam_interface(request, exam_id):
         return redirect('student_dashboard')
 
     questions = Question.objects.filter(exam=exam)
+    
+    # Parse MCQ options if they exist
+    for q in questions:
+        if q.question_type == 'MCQ' and q.options:
+            try:
+                q.parsed_options = json.loads(q.options)
+            except:
+                q.parsed_options = []
+        else:
+            q.parsed_options = []
 
     return render(request, "exam_interface.html", {
         "exam": exam,
@@ -1339,18 +1336,8 @@ def submit_exam(request, exam_id):
     total_score = 0
 
     for q in Question.objects.filter(exam=exam):
-        ans = request.POST.get(f"question_{q.id}", "").strip()
-        
-        if q.question_type == 'MCQ':
-            # Exact match for MCQ
-            is_correct = ans.lower() == q.answer.lower()
-            grade = {
-                "score": 10 if is_correct else 0,
-                "feedback": "Correct!" if is_correct else f"Incorrect. Correct answer: {q.answer}"
-            }
-        else:
-            # AI Similarity for Essay/SAQ
-            grade = grader.grade_submission(q.question_text, ans, q.answer)
+        ans = request.POST.get(f"question_{q.id}", "")
+        grade = grader.grade_submission(q.question_text, ans, q.answer)
 
         StudentAnswer.objects.create(
             result=result,

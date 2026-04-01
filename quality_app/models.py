@@ -167,6 +167,16 @@ class Exam(models.Model):
     created_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def current_status(self):
+        from django.utils import timezone
+        now = timezone.now()
+        if now < self.start_time:
+            return 'Scheduled'
+        if self.end_time and now > self.end_time:
+            return 'Ended'
+        return 'Started'
+
     def clean(self):
         super().clean()
         if self.start_time and self.start_time < timezone.now():
@@ -255,6 +265,16 @@ class Question(models.Model):
     options = models.TextField(help_text="JSON representation of options for MCQ", null=True, blank=True)
     answer = models.TextField(help_text="Correct answer or answer key")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def options_list(self):
+        if self.options:
+            try:
+                import json
+                return json.loads(self.options)
+            except:
+                return []
+        return []
 
     def __str__(self):
         return f"{self.question_type}: {self.question_text[:50]}..."

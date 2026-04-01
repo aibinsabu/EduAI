@@ -1,7 +1,7 @@
 {% extends 'teacher_base.html' %}
 
 {% block teacher_content %}
-<div class="h-full flex flex-col" x-data="{ createExamOpen: false, isCreating: false }">
+<div class="h-full flex flex-col" x-data="{ createExamOpen: false, isCreating: false, examType: 'MCQ', numQuestions: 5, numMCQ: 3, numEssay: 2 }">
     <!-- Top Glass Header -->
     <header class="h-20 glass-card m-6 rounded-2xl flex items-center justify-between px-8 z-40 sticky top-0 shrink-0">
         <div>
@@ -86,15 +86,20 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                {% if exam.status == 'Scheduled' %}
+                                {% if exam.current_status == 'Scheduled' %}
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                                     <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></span> Scheduled
                                 </span>
-                                {% else %}
+                                {% elif exam.current_status == 'Started' %}
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span> Completed
+                                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span> Started
+                                </span>
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                    <span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span> Ended
                                 </span>
                                 {% endif %}
                             </td>
@@ -202,13 +207,30 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-semibold text-gray-700 mb-1">Format</label>
-                                        <select name="exam_type"
+                                        <select name="exam_type" x-model="examType"
                                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm px-3 py-2 border">
                                             <option value="MCQ">Multiple Choice</option>
                                             <option value="Essay">Essay / Theory</option>
                                             <option value="Mixed">Mixed</option>
                                         </select>
                                     </div>
+                                    <template x-if="examType === 'Mixed'">
+                                        <div class="col-span-2 grid grid-cols-2 gap-4 mt-2 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-purple-700 uppercase mb-1">MCQ Count</label>
+                                                <input type="number" name="num_mcq" x-model.number="numMCQ" min="0" :max="numQuestions"
+                                                    @input="numMCQ = Math.min(numMCQ, numQuestions); numEssay = numQuestions - numMCQ"
+                                                    class="w-full rounded border-gray-200 text-xs px-2 py-1 focus:ring-purple-500">
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-purple-700 uppercase mb-1">Essay Count</label>
+                                                <input type="number" name="num_essay" x-model.number="numEssay" min="0" :max="numQuestions"
+                                                    @input="numEssay = Math.min(numEssay, numQuestions); numMCQ = numQuestions - numEssay"
+                                                    class="w-full rounded border-gray-200 text-xs px-2 py-1 focus:ring-purple-500">
+                                            </div>
+                                            <p class="col-span-2 text-[9px] text-purple-400">Specify exactly how many of each type to generate. Sum must equal <span x-text="numQuestions"></span>.</p>
+                                        </div>
+                                    </template>
                                     <div>
                                         <label class="block text-sm font-semibold text-gray-700 mb-1">Difficulty</label>
                                         <select name="difficulty"
@@ -220,7 +242,7 @@
                                     </div>
                                 </div>
                             </div>
-
+ 
                             <!-- Col 2 -->
                             <div class="space-y-4">
                                 <div>
@@ -228,18 +250,19 @@
                                     <input type="datetime-local" name="date" required id="id_start_time"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm px-4 py-2.5 border">
                                 </div>
-
+ 
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-1">End Date & Time</label>
                                     <input type="datetime-local" name="end_time" id="id_end_time"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm px-4 py-2.5 border">
                                     <p class="text-[10px] text-gray-400 mt-1">Leave blank for no fixed end time.</p>
                                 </div>
-
+ 
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-1">Questions
-                                        Count</label>
-                                    <input type="number" name="num_questions" value="5" min="1" max="50" required
+                                        Count (Total)</label>
+                                    <input type="number" name="num_questions" x-model.number="numQuestions" min="1" max="50" required
+                                        @input="numMCQ = Math.round(numQuestions * 0.6); numEssay = numQuestions - numMCQ"
                                         class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm px-4 py-2.5 border">
                                 </div>
 
