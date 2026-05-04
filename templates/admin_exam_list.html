@@ -53,9 +53,12 @@
                         <span class="text-xs text-gray-400 block">{{ exam.duration }} mins</span>
                     </td>
                     <td class="px-6 py-4">
-                        {% if exam.status == 'Completed' %}
+                        {% if exam.current_status == 'Ended' %}
                         <span class="text-green-600 font-medium text-xs"><i class="fas fa-check-circle mr-1"></i>
                             Completed</span>
+                        {% elif exam.current_status == 'Started' %}
+                        <span class="text-amber-600 font-medium text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>
+                            Active</span>
                         {% else %}
                         <span class="text-blue-600 font-medium text-xs"><i class="fas fa-clock mr-1"></i>
                             Scheduled</span>

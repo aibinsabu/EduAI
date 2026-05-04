@@ -104,11 +104,7 @@
                 <span class="font-medium">Overview</span>
             </a>
 
-            <a href="/admin/" target="_blank"
-                class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 nav-item-inactive group">
-                <i class="fas fa-database w-5 text-center group-hover:scale-110 transition-transform"></i>
-                <span class="font-medium">Django Admin</span>
-            </a>
+
 
             <div x-data="{ open: true }" class="space-y-1 pt-2">
                 <button @click="open = !open"
@@ -259,7 +255,7 @@
                                 <th class="px-6 py-4">Department</th>
                                 <th class="px-6 py-4">Status</th>
                                 {% endif %}
-                                {% if role_key == 'student' %}
+                                {% if role_key == 'student' or role_key == 'hod' %}
                                 <th class="px-6 py-4">Department</th>
                                 {% endif %}
                                 <th class="px-6 py-4 text-right">Actions</th>
@@ -316,7 +312,7 @@
                                 </td>
                                 {% endif %}
 
-                                {% if role_key == 'student' %}
+                                {% if role_key == 'student' or role_key == 'hod' %}
                                 <td class="px-6 py-4">
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">

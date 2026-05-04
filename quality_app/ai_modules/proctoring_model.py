@@ -16,8 +16,49 @@ absl.logging.set_stderrthreshold('error')
 import cv2
 import time
 import base64
+import sys
+import os
+
+# --- CLEAN AI REDIRECTION (Bypass Space/Paren Bug) ---
+CLEAN_AI_PATH = r"D:\EducationalAI"
+if CLEAN_AI_PATH not in sys.path:
+    sys.path.insert(0, CLEAN_AI_PATH)
+# ----------------------------------------------------
+
 import mediapipe as mp
+import numpy as np
 import threading
+import sys
+import os
+
+# --- MEDIAPIPE WINDOWS PATH PATCH (IMPORTANT) ---
+# Fixes "libprotobuf ERROR... Expected identifier, got: \" when spaces/parens are in path.
+try:
+    if os.name == 'nt':
+        import mediapipe.python.solution_base as pb
+        _orig_init = pb.SolutionBase.__init__
+        def _patched_init(self, *args, **kwargs):
+            # Force the internal path to use the virtual Z: drive (mapped earlier)
+            if 'binary_graph_path' in kwargs and kwargs['binary_graph_path']:
+                kwargs['binary_graph_path'] = kwargs['binary_graph_path'].replace(
+                    'D:\\New folder (2)\\project', 'Z:'
+                ).replace('D:/New folder (2)/project', 'Z:')
+            
+            # Also ensure the AI engine initializes in a space-free environment
+            old_cwd = os.getcwd()
+            try:
+                if os.path.exists('Z:\\'):
+                    os.chdir('Z:\\edu')
+                else:
+                    os.chdir(os.path.dirname(pb.__file__))
+                return _orig_init(self, *args, **kwargs)
+            finally:
+                os.chdir(old_cwd)
+        pb.SolutionBase.__init__ = _patched_init
+        print("DEBUG: MediaPipe Z-Drive Redirection Applied (Proctoring)")
+except Exception as e:
+    print(f"Warning: MediaPipe Path Patch Failed: {e}")
+# ------------------------------------------------
 
 _local = threading.local()
 
@@ -92,12 +133,12 @@ class ProctoringEngine:
             frame_data = frame_data.split(",")[1]
 
         try:
-            img = cv2.imdecode(
-                np.frombuffer(base64.b64decode(frame_data), np.uint8),
-                cv2.IMREAD_COLOR
-            )
-            if img is None:
-                return {"status": "Error", "message": "Video stream corrupted"}, calibration_state
+            img_bytes = base64.b64decode(frame_data)
+            np_arr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            
+            if img is None or img.size == 0:
+                return {"status": "Error", "message": "Video stream corrupted or empty"}, calibration_state
 
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             rgb.flags.writeable = False
@@ -159,6 +200,8 @@ class ProctoringEngine:
             }, calibration_state
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Proctoring Error: {e}")
             return {"status": "Error", "message": "Proctoring model busy or tracking lost"}, calibration_state
 

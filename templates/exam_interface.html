@@ -4,6 +4,109 @@
 {% block student_content %}
 <!-- Tailwind and Font setup already in base -->
 
+
+
+<script>
+    // =============================================
+    // FACE-API.JS BROWSER PROCTORING ENGINE
+    // Uses locally-hosted model files (no CDN needed)
+    // =============================================
+    const FACE_API_SCRIPT_URL = "{% static 'models/face-api.min.js' %}";
+    const FACE_API_MODEL_URL  = "{% static 'models' %}";
+    let faceApiReady = false;
+    let calibrationBaseline = null;
+
+    async function loadFaceApiModels() {
+        if (faceApiReady) return true;
+        try {
+            // Load face-api.js from local static files (no CDN dependency)
+            if (typeof faceapi === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = FACE_API_SCRIPT_URL;
+                    s.onload = resolve;
+                    s.onerror = () => reject(new Error('Failed to load face-api.js from static files'));
+                    document.head.appendChild(s);
+                });
+            }
+            // Load model weights from local static files
+            await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL);
+            await faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODEL_URL);
+            faceApiReady = true;
+            console.log('face-api.js models loaded from local static files.');
+            return true;
+        } catch (e) {
+            console.error('face-api.js load error:', e);
+            faceApiReady = false;
+            return false;
+        }
+    }
+
+    // Analyse a video element and return { status, message }
+    async function analyseFace(videoEl, strict = true) {
+        if (!faceApiReady) return { status: 'Error', message: 'AI models loading...' };
+        if (!videoEl || videoEl.videoWidth === 0) return { status: 'Error', message: 'Camera not ready' };
+
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+        const result = await faceapi.detectSingleFace(videoEl, options).withFaceLandmarks(true);
+
+        if (!result) return { status: 'Flagged', message: 'No face detected. Please look at the camera.' };
+
+        const { landmarks, detection } = result;
+        const box = detection.box;
+        const vw = videoEl.videoWidth;
+        const vh = videoEl.videoHeight;
+
+        // Centering check using nose tip (landmark 30)
+        const nose = landmarks.getNose()[3]; // nose tip
+        const normX = nose.x / vw;
+        const normY = nose.y / vh;
+
+        if (strict) {
+            if (normX < 0.25 || normX > 0.75) return { status: 'Flagged', message: 'Center your face horizontally.' };
+            if (normY < 0.20 || normY > 0.80) return { status: 'Flagged', message: 'Center your face vertically.' };
+        }
+
+        // Size check – face too small = too far away
+        const faceRatio = box.width / vw;
+        if (strict && faceRatio < 0.15) return { status: 'Flagged', message: 'Move closer to the camera.' };
+
+        return { status: 'OK', normX, normY, box };
+    }
+
+    // Check for violations vs baseline (during exam)
+    async function checkProctoring(videoEl, baseline) {
+        if (!faceApiReady) return { status: 'Clean', violations: [] };
+        if (!videoEl || videoEl.videoWidth === 0) return { status: 'Clean', violations: [] };
+
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 });
+        const result = await faceapi.detectSingleFace(videoEl, options).withFaceLandmarks(true);
+
+        if (!result) return { status: 'Flagged', violations: ['Face Not Visible'] };
+
+        const { landmarks } = result;
+        const nose = landmarks.getNose()[3];
+        const vw = videoEl.videoWidth;
+        const vh = videoEl.videoHeight;
+        const normX = nose.x / vw;
+        const normY = nose.y / vh;
+
+        const violations = [];
+        if (baseline) {
+            const dx = Math.abs(normX - baseline.noseCenterX);
+            const dy = normY - baseline.noseCenterY;
+            if (dx > 0.18) violations.push('Looking Away');
+            if (dy > 0.15) violations.push('Looking Down');
+        }
+
+        return violations.length > 0
+            ? { status: 'Flagged', violations }
+            : { status: 'Clean', violations: [] };
+    }
+
+    // Models are loaded on-demand when calibration starts (see startCalibrationLoop)
+</script>
+
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('examInterface', () => ({
@@ -193,10 +296,18 @@
                     const stream = await navigator.mediaDevices.getUserMedia(constraints);
                     window.globalExamStream = stream;
 
-                    if (videoElement) videoElement.srcObject = stream;
+                    if (videoElement) {
+                        videoElement.srcObject = stream;
+                        // Explicitly play — browsers may not autoplay after programmatic srcObject assignment
+                        videoElement.onloadedmetadata = () => {
+                            videoElement.play().catch(e => console.warn('Video play error:', e));
+                        };
+                        // Also try immediately in case metadata is already loaded
+                        videoElement.play().catch(() => {}); 
+                    }
 
                     this.cameraReady = true;
-                    this.calibrationStatus = 'Face detected. Please align with the guide.';
+                    this.calibrationStatus = 'Camera ready. Please align your face with the guide.';
 
                     if (this.availableCameras.length === 0) {
                         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -212,7 +323,7 @@
                     }
                 } catch (err) {
                     console.error(err);
-                    alert('Camera access denied. You cannot proceed.');
+                    alert('Camera access denied. Please allow camera permissions and try again.');
                     this.calibrationStatus = 'Error: Camera not accessible.';
                 }
             },
@@ -247,106 +358,74 @@
 
 
 
+            // =============================================
+            // BROWSER-SIDE FACE-API.JS CALIBRATION LOOP
+            // No server AI needed — runs entirely in browser
+            // =============================================
+
             startCalibrationLoop() {
                 if (!this.cameraReady) return;
                 this.calibrating = true;
                 this.verified = false;
-                this.calibrationStatus = "Analyzing position and lighting...";
+                this.calibrationStatus = 'Loading AI models...';
                 this.checks = { lighting: 'pending', position: 'pending', stability: 'pending' };
 
                 if (this.calibrationInterval) clearInterval(this.calibrationInterval);
-                
-                this.calibrationInterval = setInterval(async () => {
-                    if (this.calibrationSuccess) {
-                        clearInterval(this.calibrationInterval);
+
+                // Load face-api.js models on demand, then start checking
+                loadFaceApiModels().then(() => {
+                    if (!faceApiReady) {
+                        this.calibrationStatus = 'Failed to load AI models. Please check your internet connection.';
                         return;
                     }
-                    
-                    const video = document.getElementById('webcamPreview');
-                    if (!video || video.videoWidth === 0) return;
+                    this.calibrationStatus = 'AI ready. Please align your face with the guide.';
 
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    const frameData = canvas.toDataURL('image/jpeg', 0.6);
-
-                    try {
-                        const res = await fetch("{% url 'proctoring_stream' %}", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ image: frameData })
-                        });
-
-                        const data = await res.json();
-                        
-                        if (data.status === "preview") {
-                             // Good position, waiting for user to capture baseline
-                             this.calibrationStatus = "Position Good. Look at the camera and click 'Calibrate Base Position'";
-                             this.checks.position = 'success';
-                             this.checks.lighting = 'success';
-                             this.verified = true;
-                        } else if (data.status === "Flagged") {
-                             this.calibrationStatus = "Issue: " + data.message;
-                             this.checks.position = 'pending';
-                             this.checks.lighting = 'pending';
-                             this.verified = false;
-                        } else if (data.status === "Error") {
-                             this.calibrationStatus = "Error: " + data.message;
-                             this.verified = false;
+                    this.calibrationInterval = setInterval(async () => {
+                        if (this.calibrationSuccess) {
+                            clearInterval(this.calibrationInterval);
+                            return;
                         }
-                    } catch (e) {
-                        console.error("Calibration check error:", e);
-                    }
-                }, 1000); // Check every second during setup
+
+                        const video = document.getElementById('webcamPreview');
+                        const result = await analyseFace(video, true);
+
+                        if (result.status === 'OK') {
+                            this.calibrationStatus = "Position Good ✓ — Look straight at the camera and click 'Calibrate Base Position'.";
+                            this.checks.lighting = 'success';
+                            this.checks.position = 'success';
+                            this.verified = true;
+                            window._pendingBaseline = { noseCenterX: result.normX, noseCenterY: result.normY };
+                        } else if (result.status === 'Flagged') {
+                            this.calibrationStatus = result.message;
+                            this.checks.lighting = 'pending';
+                            this.checks.position = 'pending';
+                            this.verified = false;
+                        } else {
+                            this.calibrationStatus = result.message || 'Initializing...';
+                        }
+                    }, 800);
+                });
             },
 
             async startPreview() {
                 if (!this.cameraReady) return;
-
-                // TEMP BYPASS: Skip calibration
-                this.calibrationSuccess = true;
-                this.verified = true;
-                this.calibrationStatus = "Camera Ready (Calibration Bypassed). You may begin.";
-
-                // Clear any existing session first
-                await this.resetCalibrationSession();
-                
-                // this.startCalibrationLoop(); 
+                this.startCalibrationLoop();
             },
-
 
             async captureBaseline() {
                 if (!this.verified) return;
-                
-                this.calibrationStatus = "Capturing baseline...";
-                const canvas = document.createElement('canvas');
+
+                this.calibrationStatus = 'Locking baseline...';
                 const video = document.getElementById('webcamPreview');
+                const result = await analyseFace(video, true);
 
-                if (!video || video.videoWidth === 0) return;
-
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                const frameData = canvas.toDataURL('image/jpeg', 0.8);
-
-                try {
-                    const res = await fetch("{% url 'proctoring_stream' %}", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ image: frameData, trigger_calibration: true })
-                    });
-                    const data = await res.json();
-
-                    if (data.status === 'Calibrated') {
-                        this.finalizeCalibration();
-                    } else {
-                        // If strict check failed at the exact moment of capture
-                        this.calibrationStatus = "Capture Failed: " + (data.message || "Try again");
-                        this.verified = false;
-                    }
-                } catch (e) {
-                    this.calibrationStatus = "Connection Error";
+                if (result.status === 'OK') {
+                    // Set global baseline for proctoring
+                    calibrationBaseline = window._pendingBaseline || { noseCenterX: result.normX, noseCenterY: result.normY };
+                    this.finalizeCalibration();
+                } else {
+                    this.calibrationStatus = 'Capture Failed: ' + result.message + ' — Try again.';
+                    this.verified = false;
                 }
             },
 
@@ -354,143 +433,116 @@
                 this.calibrationSuccess = true;
                 this.calibrating = false;
                 this.verified = true;
-                this.checks.stability = 'success'; // Mark all complete
-                this.calibrationStatus = "Calibration Complete! You may now enter the exam.";
+                this.checks.stability = 'success';
+                this.calibrationStatus = 'Calibration Complete! You may now enter the exam.';
                 if (this.calibrationInterval) clearInterval(this.calibrationInterval);
             },
 
             async resetCalibrationSession() {
-                try {
-                    await fetch("{% url 'proctoring_stream' %}", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ reset: true })
-                    });
-                } catch (e) { console.error("Reset failed", e); }
+                calibrationBaseline = null;
+                window._pendingBaseline = null;
             },
-
-
-
 
             recalibrate() {
                 this.calibrationSuccess = false;
                 this.calibrationProgress = 0;
                 this.checks = { lighting: 'pending', position: 'pending', stability: 'pending' };
                 this.calibrationStatus = 'Face detected. Please align with the guide.';
+                calibrationBaseline = null;
             },
 
             startExam() {
                 this.examStarted = true;
 
                 // Anti-cheating: Disable copy, cut, paste
-                document.addEventListener('copy', (e) => e.preventDefault());
-                document.addEventListener('cut', (e) => e.preventDefault());
+                document.addEventListener('copy',  (e) => e.preventDefault());
+                document.addEventListener('cut',   (e) => e.preventDefault());
                 document.addEventListener('paste', (e) => e.preventDefault());
 
                 this.$nextTick(() => {
+                    // Connect the stream to the visible sidebar video element
                     const liveFeed = document.getElementById('liveProctoringSidebar');
                     if (liveFeed && window.globalExamStream) {
                         liveFeed.srcObject = window.globalExamStream;
-                        liveFeed.play().catch(e => console.error(e));
-                        this.startProctoringLoop(); // Start backend monitoring
+                        liveFeed.play().then(() => {
+                            this.startProctoringLoop(liveFeed);
+                        }).catch(e => console.error('Proctor video play error:', e));
+                    } else {
+                        console.warn('[Proctoring] No globalExamStream or liveFeed element found.');
                     }
                 });
 
                 this.enterFullscreen();
-
                 if (window.initExamTimer) window.initExamTimer();
             },
-            
+
             submitExam() {
                 if (document.fullscreenElement) {
                     document.exitFullscreen().catch(err => console.error(err));
                 }
                 document.getElementById('examForm').submit();
             },
+             // =============================================
+            // BROWSER-SIDE PROCTORING LOOP (face-api.js)
+            // Checks every 3 seconds against the calibrated baseline
+            // =============================================
+            startProctoringLoop(videoEl) {
+                console.log('[Proctoring] Loop started.');
 
-            // startProctoringLoop() {
-            //     const canvas = document.createElement('canvas'); // Off-screen canvas
-            //     const video = document.getElementById('liveProctoringSidebar');
+                const showWarning = (violations) => {
+                    // Remove any existing warning first
+                    const existing = document.getElementById('proctoringWarningBanner');
+                    if (existing) existing.remove();
 
-            //     setInterval(async () => {
-            //         if (!video || !window.globalExamStream || video.paused || video.ended) return;
-
-            //         canvas.width = video.videoWidth;
-            //         canvas.height = video.videoHeight;
-            //         const ctx = canvas.getContext('2d');
-            //         ctx.drawImage(video, 0, 0);
-
-            //         const frameData = canvas.toDataURL('image/jpeg', 0.5);
-
-            //         try {
-            //             const response = await fetch('{% url "proctoring_stream" %}', {
-            //                 method: 'POST',
-            //                 headers: { 'Content-Type': 'application/json' },
-            //                 body: JSON.stringify({ image: frameData })
-            //             });
-
-            //             const result = await response.json();
-
-            //             if (result.status === 'Flagged') {
-            //                 // Show alert div
-            //                 const warningDiv = document.createElement('div');
-            //                 warningDiv.className = 'fixed top-10 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-8 py-4 rounded-xl shadow-2xl z-[100] animate-bounce font-bold border-2 border-white flex items-center gap-3';
-            //                 warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>Warning: ' + result.violations.join(', ') + '</span>';
-            //                 document.body.appendChild(warningDiv);
-            //                 setTimeout(() => warningDiv.remove(), 4000);
-            //             }
-            //         } catch (err) {
-            //             console.error('Proctoring error:', err);
-            //         }
-            //     }, 4000); // Check every 4 seconds
-            // }
-
-
-            startProctoringLoop() {
-                // TEMP BYPASS: Disable proctoring loop
-                console.log("Proctoring disabled.");
-                return;
-                
-                const canvas = document.createElement('canvas');
-                const video = document.getElementById('liveProctoringSidebar');
+                    const warning = document.createElement('div');
+                    warning.id = 'proctoringWarningBanner';
+                    warning.style.cssText = [
+                        'position:fixed',
+                        'top:80px',
+                        'left:50%',
+                        'transform:translateX(-50%)',
+                        'background:linear-gradient(135deg,#dc2626,#b91c1c)',
+                        'color:white',
+                        'padding:14px 32px',
+                        'border-radius:16px',
+                        'box-shadow:0 8px 32px rgba(220,38,38,0.5)',
+                        'z-index:99999',
+                        'font-weight:700',
+                        'font-size:15px',
+                        'display:flex',
+                        'align-items:center',
+                        'gap:12px',
+                        'animation:shake 0.4s ease',
+                        'border:2px solid rgba(255,255,255,0.3)'
+                    ].join(';');
+                    warning.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:20px;"></i><span>⚠ Proctoring Alert: ' + violations.join(' | ') + '</span>';
+                    document.body.appendChild(warning);
+                    setTimeout(() => warning.remove(), 5000);
+                };
 
                 setInterval(async () => {
-                    if (!video || video.videoWidth === 0) return;
-
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0);
-
-                    const frameData = canvas.toDataURL('image/jpeg', 0.6);
-
-                    try {
-                        const res = await fetch("{% url 'proctoring_stream' %}", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ image: frameData })
-                        });
-
-                        const data = await res.json();
-
-                        if (data.status === "Flagged") {
-                            const warning = document.createElement("div");
-                            warning.className = `
-                    fixed top-10 left-1/2 -translate-x-1/2 
-                    bg-red-600 text-white px-6 py-3 rounded-xl 
-                    shadow-xl z-[999] animate-pulse
-                `;
-                            warning.innerText = data.violations.join(", ");
-                            document.body.appendChild(warning);
-
-                            setTimeout(() => warning.remove(), 3500);
-                        }
-                    } catch (e) {
-                        console.error(e);
+                    if (!videoEl || videoEl.readyState < 2) {
+                        console.log('[Proctoring] Video not ready yet, skipping check.');
+                        return;
                     }
-                }, 4000);
-            }
 
+                    const result = await checkProctoring(videoEl, calibrationBaseline);
+                    console.log('[Proctoring] Check result:', result);
+
+                    if (result.status === 'Flagged') {
+                        showWarning(result.violations);
+
+                        // Log violation to backend
+                        try {
+                            await fetch("{% url 'proctoring_stream' %}", {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ violation_report: true, violations: result.violations })
+                            });
+                        } catch (e) { console.warn('Failed to log violation:', e); }
+                    }
+                }, 3000); // Check every 3 seconds
+            }
 
 
 
@@ -733,6 +785,11 @@
                     <i class="fas fa-question-circle text-gray-400"></i>
                     <span class="text-sm font-medium text-gray-600">Question <span
                             x-text="activeQuestionIndex + 1"></span> of <span x-text="totalQuestions"></span></span>
+                    <!-- Proctoring Active Badge -->
+                    <div x-show="examStarted" class="ml-4 flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full">
+                        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        <span class="text-xs font-bold text-red-600">AI Proctoring Active</span>
+                    </div>
                 </div>
             </header>
 

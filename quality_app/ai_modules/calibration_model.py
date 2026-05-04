@@ -13,8 +13,52 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.ERROR)
 absl.logging.set_stderrthreshold('error')
 
+import cv2
+import numpy as np
+import time
+import base64
+import sys
+import os
 
+# --- CLEAN AI REDIRECTION (Bypass Space/Paren Bug) ---
+CLEAN_AI_PATH = r"D:\EducationalAI"
+if CLEAN_AI_PATH not in sys.path:
+    sys.path.insert(0, CLEAN_AI_PATH)
+# ----------------------------------------------------
+
+import mediapipe as mp
 import threading
+
+# --- MEDIAPIPE WINDOWS PATH PATCH (IMPORTANT) ---
+# Fixes "libprotobuf ERROR... Expected identifier, got: \" when spaces/parens are in path.
+try:
+    if os.name == 'nt':
+        import mediapipe.python.solution_base as pb
+        _orig_init = pb.SolutionBase.__init__
+        def _patched_init(self, *args, **kwargs):
+            # Force the internal path to use the virtual Z: drive (mapped earlier)
+            # This bypasses the MediaPipe Windows parsing bug (spaces/parens).
+            if 'binary_graph_path' in kwargs and kwargs['binary_graph_path']:
+                kwargs['binary_graph_path'] = kwargs['binary_graph_path'].replace(
+                    'D:\\New folder (2)\\project', 'Z:'
+                ).replace('D:/New folder (2)/project', 'Z:')
+            
+            # Also ensure the AI engine initializes in a space-free environment
+            old_cwd = os.getcwd()
+            try:
+                if os.path.exists('Z:\\'):
+                    os.chdir('Z:\\edu')
+                else:
+                    # Fallback to mediapipe dir if Z is not mapped
+                    os.chdir(os.path.dirname(pb.__file__))
+                return _orig_init(self, *args, **kwargs)
+            finally:
+                os.chdir(old_cwd)
+        pb.SolutionBase.__init__ = _patched_init
+        print("DEBUG: MediaPipe Z-Drive Redirection Applied")
+except Exception as e:
+    print(f"Warning: MediaPipe Z-Drive Patch Failed: {e}")
+# ------------------------------------------------
 
 _local = threading.local()
 
@@ -102,10 +146,13 @@ class CalibrationEngine:
             }
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Calibration Error: {e}")
             err_str = str(e)
-            if len(err_str) > 50:
+            if len(err_str) > 60:
                  # Mediapipe protobuf errors are huge and break the UI
+                 # We keep it friendly for the UI but logs will have the full details.
                  err_str = "AI Engine is warming up or frame tracking failed. Retrying..."
             return {"status": "Error", "message": err_str}
 

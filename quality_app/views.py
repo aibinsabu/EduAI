@@ -997,7 +997,7 @@ def principal_student_list(request):
     if not request.session.get('role') == 'principal':
         return redirect('login')
         
-    students = User.objects.all().order_by('first_name')
+    students = Student.objects.all().order_by('first_name')
     return render(request, 'principal_student_list.html', {'students': students})
 
 def principal_teacher_list(request):
@@ -1377,107 +1377,35 @@ def submit_exam(request, exam_id):
 @csrf_exempt
 def proctoring_stream(request):
     """
-    Receives webcam frames and returns calibration / proctoring status.
+    Lightweight endpoint: receives violation reports from the browser.
+    All AI face detection is now done client-side using face-api.js.
+    No image processing happens here.
     """
     if request.method != "POST":
         return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
 
     try:
-        # Lazy load to avoid OOM/Crash during calibration
-        # proctoring_engine = ProctoringService.get_instance()
-        
         payload = json.loads(request.body)
-        
-        # Handle Reset Request
+
+        # Handle session reset
         if payload.get("reset"):
             if 'proctoring_calibration_state' in request.session:
                 del request.session['proctoring_calibration_state']
-            return JsonResponse({"status": "Reset", "message": "Calibration state cleared"})
+            return JsonResponse({"status": "Reset", "message": "Session cleared"})
 
-        frame_data = payload.get("image")
+        # Handle violation report from browser-side face-api.js
+        if payload.get("violation_report"):
+            violations = payload.get("violations", [])
+            student_id = request.session.get("student_id", "unknown")
+            print(f"[PROCTORING] Student {student_id} violation: {violations}")
+            return JsonResponse({"status": "Logged", "violations": violations})
 
-        if not frame_data:
-            return JsonResponse({"status": "error", "message": "No image data"})
-
-        # Get calibration state from session or initialize default
-        calibration_state = request.session.get('proctoring_calibration_state', None)
-        
-        # Determine if we should use the Lightweight Calibration Engine or the Full Proctoring Engine
-        if not calibration_state:
-             calibration_state = {
-                "calibrated": False,
-                "base_pitch": 0.0,
-                "base_yaw": 0.0,
-                "violation_streak": 0
-             }
-             
-        is_calibrated = calibration_state.get("calibrated", False)
-
-        # Inject trigger from request if present
-        if payload.get("trigger_calibration"):
-            # If triggering, we still use CalibrationEngine to get the baseline values
-            from .ai_modules.calibration_model import get_calibration_engine
-            calib_engine = get_calibration_engine()
-            
-            analysis = calib_engine.analyze_frame(frame_data, strict=True)
-            
-            if analysis.get("status") == "OK":
-                # Success! Set baseline
-                new_state = {
-                    "calibrated": True,
-                    "base_pitch": analysis.get("pitch"),
-                    "base_yaw": analysis.get("yaw"),
-                    "violation_streak": 0
-                }
-                request.session['proctoring_calibration_state'] = new_state
-                request.session.modified = True
-                return JsonResponse({"status": "Calibrated", "message": "Baseline Set Successfully"})
-            else:
-                return JsonResponse({"status": "Flagged", "message": analysis.get("message")})
-
-        # Normal Flow
-        if not is_calibrated:
-            # use Lightweight Engine for Preview
-            from .ai_modules.calibration_model import get_calibration_engine
-            calib_engine = get_calibration_engine()
-            
-            analysis = calib_engine.analyze_frame(frame_data, strict=True)
-            
-            if analysis.get("status") == "OK":
-                 return JsonResponse({"status": "preview", "message": "Aligning... OK"})
-            elif analysis.get("status") == "Flagged":
-                 return JsonResponse({"status": "Flagged", "message": analysis.get("message")})
-            elif analysis.get("status") == "Error":
-                 return JsonResponse({"status": "Error", "message": analysis.get("message")})
-            
-            return JsonResponse(analysis)
-
-        # If Calibrated -> Use Full Proctoring Engine (Session/Exam Mode)
-        # Initialize here ONLY when actually needed
-        proctoring_engine = ProctoringService.get_instance()
-        result, new_state = proctoring_engine.process_frame(frame_data, calibration_state)
-        
-        # IMPORTANT: Save state back to session
-        request.session['proctoring_calibration_state'] = new_state
-        request.session.modified = True
-        
-        if isinstance(result, dict) and result.get("status") == "Error":
-             # If engine reported a safe error, log it but don't crash
-             print(f"Proctoring Warning: {result.get('message')}")
-             
-        return JsonResponse(result)
+        # Fallback — old image-based payload (just acknowledge, no processing)
+        return JsonResponse({"status": "OK", "message": "Received"})
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"CRITICAL: Proctoring System Crash: {e}") 
-        # Trigger Self-Healing
-        ProctoringService.reset_instance()
-        
-        return JsonResponse({
-            "status": "Recovering", 
-            "message": "System restoring... Please wait 1s."
-        })
+        print(f"Proctoring endpoint error: {e}")
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 # --- Admin Dashboard Views ---
