@@ -823,8 +823,18 @@ def finalize_result(request, result_id):
         score = request.POST.get('score')
         feedback = request.POST.get('feedback')
         
+        # --- Server-side score validation ---
+        try:
+            score_val = float(score)
+            if score_val < 0 or score_val > 100:
+                messages.error(request, "Score must be between 0 and 100. Please correct the value.")
+                return redirect('result_detail', result_id=result_id)
+        except (TypeError, ValueError):
+            messages.error(request, "Invalid score value. Please enter a number between 0 and 100.")
+            return redirect('result_detail', result_id=result_id)
+        
         result = Result.objects.get(id=result_id)
-        result.score = score
+        result.score = score_val
         result.ai_feedback = feedback # Override or append
         result.status = 'Released' # Or 'Graded'
         result.save()
