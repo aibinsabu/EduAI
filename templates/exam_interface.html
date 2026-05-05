@@ -221,7 +221,13 @@
                 this.isFullscreen = !!document.fullscreenElement;
                 if (!this.isFullscreen && this.examStarted) {
                     this.fullscreenExitCount++;
+
+                    // Log every fullscreen exit to backend for HOD visibility
+                    this.logProctoringEvent('fullscreen_exit', [], this.fullscreenExitCount);
+
                     if (this.fullscreenExitCount > 5) {
+                        // Log forced submission before submitting
+                        this.logProctoringEvent('forced_submit', [], this.fullscreenExitCount);
                         alert("You have exited fullscreen too many times. Your exam will now be submitted.");
                         this.submitExam();
                         return;
@@ -232,6 +238,8 @@
                         if (this.fullscreenSecondsLeft <= 0) {
                             clearInterval(this.fullscreenTimer);
                             this.fullscreenTimer = null;
+                            // Log forced submit due to timeout
+                            this.logProctoringEvent('forced_submit', [], this.fullscreenExitCount);
                             alert("You did not return to fullscreen in time. Your exam will now be submitted.");
                             this.submitExam();
                         }
@@ -242,6 +250,25 @@
                         this.fullscreenTimer = null;
                     }
                 }
+            },
+
+            // Send any proctoring event to the backend for HOD audit
+            logProctoringEvent(eventType, violations = [], exitCount = 0) {
+                const examId = "{{ exam.id }}";
+                fetch("{% url 'proctoring_stream' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        event_type: eventType,
+                        violations: violations,
+                        exit_count: exitCount,
+                        exam_id: examId,
+                        violation_report: true
+                    })
+                }).catch(e => console.warn('[Proctoring] Log failed:', e));
             },
             
             enterFullscreen() {
@@ -532,14 +559,8 @@
                     if (result.status === 'Flagged') {
                         showWarning(result.violations);
 
-                        // Log violation to backend
-                        try {
-                            await fetch("{% url 'proctoring_stream' %}", {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ violation_report: true, violations: result.violations })
-                            });
-                        } catch (e) { console.warn('Failed to log violation:', e); }
+                        // Log face violation to backend for HOD visibility
+                        this.logProctoringEvent('face_detection', result.violations, 0);
                     }
                 }, 3000); // Check every 3 seconds
             }

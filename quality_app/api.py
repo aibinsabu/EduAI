@@ -150,17 +150,49 @@ def get_exam_integrity_report(request):
         if dept:
             logs_qs = logs_qs.filter(exam__course__department=dept)
 
-        # Count flags by type across all exams
+        # 1. Count flags by type across all exams
         flag_counts = logs_qs.values('flag_type').annotate(count=Count('id'))
-        
-        # Recent severe flags
+
+        # 2. Recent severe flags (all High severity) — latest 10
         recent_flags = logs_qs.filter(severity='High').values(
-            'student__first_name', 'student__last_name', 'exam__title', 'flag_type', 'timestamp'
+            'student__first_name', 'student__last_name',
+            'student__department', 'student__registration_no',
+            'exam__title', 'flag_type', 'timestamp', 'severity'
         ).order_by('-timestamp')[:10]
+
+        # 3. Unusual submissions: fullscreen exits and forced submissions
+        unusual_qs = logs_qs.filter(
+            flag_type__icontains='Fullscreen Exit'
+        ) | logs_qs.filter(
+            flag_type__icontains='Forced Submission'
+        )
+
+        unusual_submissions = unusual_qs.values(
+            'student__first_name', 'student__last_name',
+            'student__department', 'student__registration_no',
+            'exam__title', 'flag_type', 'timestamp', 'severity'
+        ).order_by('-timestamp')[:20]
+
+        # 4. Per-student fullscreen exit summary (aggregated)
+        exit_summary = logs_qs.filter(
+            flag_type__icontains='Fullscreen Exit'
+        ).values(
+            'student__first_name', 'student__last_name',
+            'student__department', 'exam__title'
+        ).annotate(exit_count=Count('id')).order_by('-exit_count')[:10]
+
+        # 5. Forced submission count
+        forced_count = logs_qs.filter(
+            flag_type__icontains='Forced Submission'
+        ).count()
 
         data = {
             "flag_distribution": list(flag_counts),
-            "recent_severe_incidents": list(recent_flags)
+            "recent_severe_incidents": list(recent_flags),
+            "unusual_submissions": list(unusual_submissions),
+            "fullscreen_exit_summary": list(exit_summary),
+            "forced_submission_count": forced_count,
+            "department": dept or "All Departments"
         }
         return JsonResponse(data)
     except Exception as e:

@@ -1302,6 +1302,9 @@ def exam_interface(request, exam_id):
 
     questions = Question.objects.filter(exam=exam)
 
+    # Store current exam ID in session so proctoring_stream can link events to this exam
+    request.session["current_exam_id"] = exam.id
+
     return render(request, "exam_interface.html", {
         "exam": exam,
         "questions": questions,
@@ -1378,8 +1381,9 @@ def submit_exam(request, exam_id):
 def proctoring_stream(request):
     """
     Lightweight endpoint: receives violation reports from the browser.
-    All AI face detection is now done client-side using face-api.js.
-    No image processing happens here.
+    All AI face detection is done client-side using face-api.js.
+    Violation events (face flags, fullscreen exits, forced submissions)
+    are persisted to ProctoringLog so the HOD can review them.
     """
     if request.method != "POST":
         return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
@@ -1393,12 +1397,60 @@ def proctoring_stream(request):
                 del request.session['proctoring_calibration_state']
             return JsonResponse({"status": "Reset", "message": "Session cleared"})
 
+        # -------------------------------------------------------
         # Handle violation report from browser-side face-api.js
-        if payload.get("violation_report"):
-            violations = payload.get("violations", [])
-            student_id = request.session.get("student_id", "unknown")
-            print(f"[PROCTORING] Student {student_id} violation: {violations}")
-            return JsonResponse({"status": "Logged", "violations": violations})
+        #   OR fullscreen-exit / forced-submission events
+        # -------------------------------------------------------
+        if payload.get("violation_report") or payload.get("event_type"):
+            violations    = payload.get("violations", [])
+            event_type    = payload.get("event_type", "face_detection")  # 'fullscreen_exit' | 'forced_submit'
+            exit_count    = payload.get("exit_count", 0)
+            student_id    = request.session.get("student_id")
+            exam_id       = payload.get("exam_id") or request.session.get("current_exam_id")
+
+            print(f"[PROCTORING] Student {student_id} | exam {exam_id} | event={event_type} | violations={violations}")
+
+            # Persist to ProctoringLog if we have enough context
+            if student_id and exam_id:
+                try:
+                    student = Student.objects.get(id=student_id)
+                    exam    = Exam.objects.get(id=exam_id)
+
+                    if event_type == "fullscreen_exit":
+                        flag_label = f"Fullscreen Exit (#{exit_count})"
+                        severity   = "High" if exit_count > 3 else "Medium"
+                        ProctoringLog.objects.create(
+                            exam=exam,
+                            student=student,
+                            flag_type=flag_label,
+                            severity=severity
+                        )
+
+                    elif event_type == "forced_submit":
+                        ProctoringLog.objects.create(
+                            exam=exam,
+                            student=student,
+                            flag_type="Forced Submission (>5 Fullscreen Exits)",
+                            severity="High"
+                        )
+
+                    else:
+                        # Face-detection violations
+                        for v in violations:
+                            severity = "High" if v in ["Face Not Visible"] else "Medium"
+                            ProctoringLog.objects.create(
+                                exam=exam,
+                                student=student,
+                                flag_type=v,
+                                severity=severity
+                            )
+
+                except (Student.DoesNotExist, Exam.DoesNotExist) as lookup_err:
+                    print(f"[PROCTORING] DB lookup failed: {lookup_err}")
+                except Exception as db_err:
+                    print(f"[PROCTORING] DB save error: {db_err}")
+
+            return JsonResponse({"status": "Logged", "violations": violations, "event_type": event_type})
 
         # Fallback — old image-based payload (just acknowledge, no processing)
         return JsonResponse({"status": "OK", "message": "Received"})
